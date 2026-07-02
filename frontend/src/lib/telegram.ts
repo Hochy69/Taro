@@ -1,0 +1,114 @@
+const ZODIAC_SIGNS = [
+  { name: 'Козерог', start: [12, 22], end: [1, 19] },
+  { name: 'Водолей', start: [1, 20], end: [2, 18] },
+  { name: 'Рыбы', start: [2, 19], end: [3, 20] },
+  { name: 'Овен', start: [3, 21], end: [4, 19] },
+  { name: 'Телец', start: [4, 20], end: [5, 20] },
+  { name: 'Близнецы', start: [5, 21], end: [6, 20] },
+  { name: 'Рак', start: [6, 21], end: [7, 22] },
+  { name: 'Лев', start: [7, 23], end: [8, 22] },
+  { name: 'Дева', start: [8, 23], end: [9, 22] },
+  { name: 'Весы', start: [9, 23], end: [10, 22] },
+  { name: 'Скорпион', start: [10, 23], end: [11, 21] },
+  { name: 'Стрелец', start: [11, 22], end: [12, 21] },
+]
+
+export function getZodiacFromDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+
+  for (const sign of ZODIAC_SIGNS) {
+    const [startM, startD] = sign.start
+    const [endM, endD] = sign.end
+    if (
+      (month === startM && day >= startD) ||
+      (month === endM && day <= endD)
+    ) {
+      return sign.name
+    }
+  }
+  return 'Козерог'
+}
+
+export function haptic(type: 'light' | 'medium' | 'heavy' | 'success' | 'error' = 'light') {
+  const tg = window.Telegram?.WebApp
+  if (!tg?.HapticFeedback) return
+
+  if (type === 'success' || type === 'error') {
+    tg.HapticFeedback.notificationOccurred(type)
+  } else {
+    tg.HapticFeedback.impactOccurred(type)
+  }
+}
+
+export function openInvoice(stars: number, title: string) {
+  const tg = window.Telegram?.WebApp
+  if (tg?.openInvoice) {
+    // Invoice URL would come from backend in production
+    console.log(`Opening invoice: ${title} - ${stars} stars`)
+  }
+}
+
+/** Native Telegram Mini App share (chat picker inside the app). */
+export function shareTelegramMessage(preparedMessageId: string): Promise<boolean> {
+  const tg = window.Telegram?.WebApp
+  if (!tg?.shareMessage) {
+    return Promise.resolve(false)
+  }
+  return new Promise((resolve) => {
+    tg.shareMessage!(preparedMessageId, (sent) => resolve(Boolean(sent)))
+  })
+}
+
+/** Copy text to clipboard with a Telegram alert (no external links). */
+export async function shareText(text: string): Promise<'copied' | 'failed'> {
+  const trimmed = text.trim()
+  if (!trimmed) return 'failed'
+
+  try {
+    await navigator.clipboard.writeText(trimmed)
+    window.Telegram?.WebApp?.showAlert?.(
+      'Текст скопирован. Откройте чат и вставьте сообщение (долгое нажатие → Вставить).',
+    )
+    return 'copied'
+  } catch {
+    return 'failed'
+  }
+}
+
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: {
+        initData: string
+        ready: () => void
+        expand: () => void
+        close: () => void
+        colorScheme: 'light' | 'dark'
+        themeParams: Record<string, string>
+        HapticFeedback?: {
+          impactOccurred: (style: string) => void
+          notificationOccurred: (type: string) => void
+        }
+        openInvoice?: (url: string, callback?: (status: string) => void) => void
+        openTelegramLink?: (url: string) => void
+        shareMessage?: (msgId: string, callback?: (success: boolean) => void) => void
+        showAlert?: (message: string, callback?: () => void) => void
+        MainButton: {
+          text: string
+          show: () => void
+          hide: () => void
+          onClick: (cb: () => void) => void
+        }
+        BackButton?: {
+          isVisible: boolean
+          show: () => void
+          hide: () => void
+          onClick: (cb: () => void) => void
+          offClick: (cb: () => void) => void
+        }
+      }
+    }
+  }
+}

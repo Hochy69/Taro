@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-tarot-dark text-white font-body antialiased;
+    overscroll-behavior: none;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
+  }
+
+  .glass-card {
+    @apply glass p-4 shadow-lg shadow-purple-900/20;
+  }
+
+  .gradient-bg {
+    background: radial-gradient(ellipse at top, #2D1B4E 0%, #0F0A1A 50%, #0A0612 100%);
+  }
+
+  .gradient-gold {
+    background: linear-gradient(135deg, #D4AF37 0%, #F5E6A3 50%, #D4AF37 100%);
+  }
+
+  .btn-primary {
+    @apply px-6 py-4 rounded-2xl font-semibold text-tarot-dark gradient-gold
+           shadow-lg shadow-yellow-900/30 active:scale-95 transition-transform;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-2xl font-medium glass text-white
+           active:scale-95 transition-transform;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-white/10 rounded-lg;
+  }
+}
