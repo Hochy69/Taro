@@ -15,10 +15,18 @@ const TITLES: Record<AppScreen, string> = {
   result: 'Ваш расклад',
   history: 'История',
   subscription: 'Premium',
+  cardOfDay: 'Карта дня',
+  portrait: 'Мой портрет',
+  natalChart: 'Натальная карта',
+  compatibility: 'Совместимость',
 }
 
 const MENU_ITEMS: { id: string; screen: AppScreen; label: string; icon: string }[] = [
   { id: 'spread', screen: 'welcome', label: 'Новый расклад', icon: '🔮' },
+  { id: 'cardday', screen: 'cardOfDay', label: 'Карта дня', icon: '🃏' },
+  { id: 'portrait', screen: 'portrait', label: 'Мой портрет', icon: '✨' },
+  { id: 'natal', screen: 'natalChart', label: 'Натальная карта', icon: '🌌' },
+  { id: 'compat', screen: 'compatibility', label: 'Совместимость', icon: '💕' },
   { id: 'history', screen: 'history', label: 'История раскладов', icon: '📜' },
   { id: 'referral', screen: 'subscription', label: 'Пригласить друга', icon: '🎁' },
   { id: 'premium', screen: 'subscription', label: 'Premium подписка', icon: '⭐️' },
@@ -70,9 +78,9 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="fixed top-0 inset-x-0 z-40 h-14 flex items-center justify-between px-2
+      <header className="fixed top-0 inset-x-0 z-40 h-14 flex items-center justify-between px-2 max-w-full overflow-hidden
                          bg-tarot-dark/70 backdrop-blur-md border-b border-white/5">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 min-w-0 shrink">
           <button
             onClick={() => {
               haptic('light')
@@ -101,7 +109,9 @@ export function AppHeader() {
           )}
         </div>
 
-        <span className="text-sm font-medium text-white/70 pr-2">{TITLES[screen]}</span>
+        <span className="text-sm font-medium text-white/70 pr-2 truncate shrink min-w-0 max-w-[45%] text-right">
+          {TITLES[screen]}
+        </span>
       </header>
 
       <AnimatePresence>
@@ -146,7 +156,7 @@ export function AppHeader() {
                                 }`}
                   >
                     <span className="text-xl">{item.icon}</span>
-                    <span className="font-medium">{item.label}</span>
+                    <span className="font-medium truncate">{item.label}</span>
                   </button>
                 ))}
               </nav>

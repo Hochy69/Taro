@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1'
 const TOKEN_KEY = 'tarot_access_token'
 const AUTH_KEY = 'tarot_auth_meta'
 
@@ -12,6 +12,9 @@ interface AuthMeta {
   profile?: {
     name?: string | null
     birth_date?: string | null
+    birth_time?: string | null
+    birth_city?: string | null
+    gender?: string | null
     zodiac_sign?: string | null
   } | null
 }
@@ -57,14 +60,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   }
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`
+  const token = accessToken ?? loadAccessToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+    accessToken = token
   }
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers })
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Request failed' }))
-    throw new Error(error.detail || `HTTP ${response.status}`)
+    const detail = error.detail
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ')
+          : 'Request failed'
+    throw new Error(message || `HTTP ${response.status}`)
   }
   return response.json()
 }
@@ -79,6 +91,9 @@ export interface Category {
 export interface UserProfile {
   name?: string
   birth_date?: string
+  birth_time?: string
+  birth_city?: string
+  gender?: string
   zodiac_sign?: string
 }
 
@@ -132,8 +147,19 @@ export interface Limits {
   daily_limit: number
   is_premium: boolean
   bonus_spreads: number
+  compatibility_credits: number
   period_days: number
   next_available_at: string | null
+  completed_spreads: number
+  first_paid_discount_eligible: boolean
+  first_paid_discounted_price: number | null
+  first_paid_discount_percent: number
+}
+
+export interface ReferralMilestone {
+  invites_required: number
+  reward: string
+  reached: boolean
 }
 
 export interface ReferralInfo {
@@ -141,6 +167,111 @@ export interface ReferralInfo {
   link: string
   invites_count: number
   bonus_earned: number
+  milestones: ReferralMilestone[]
+  next_milestone: ReferralMilestone | null
+}
+
+export interface SpreadPack {
+  pack: string
+  stars: number
+  spreads: number
+  savings_percent: number
+  label: string
+}
+
+export interface LoveBundle {
+  stars: number
+  original_stars: number
+  savings_percent: number
+  description: string
+}
+
+export interface CardOfDay {
+  date: string
+  card: SpreadCard
+  meaning: string
+  advice: string
+  conclusion: string
+  text: string
+}
+
+export interface ZodiacPortrait {
+  zodiac_sign: string
+  emoji: string
+  summary: string
+  essence: string
+  strengths: string
+  shadow: string
+  love: string
+  career: string
+  advice: string
+  text: string
+  lunar: {
+    lunar_day: string
+    title: string
+    meaning: string
+    advice: string
+  } | null
+}
+
+export interface PlanetPosition {
+  key: string
+  name: string
+  symbol: string
+  sign: string
+  sign_emoji: string
+  degree: number
+  longitude: number
+  house: number | null
+  interpretation: string
+  wheel_angle: number
+}
+
+export interface NatalChart {
+  birth_date: string
+  birth_time: string | null
+  birth_city: string | null
+  time_unknown: boolean
+  ascendant: string | null
+  ascendant_emoji: string | null
+  ascendant_degree: number | null
+  ascendant_longitude: number | null
+  summary: string
+  planets: PlanetPosition[]
+  houses: Array<{ house: number; sign: string; sign_emoji: string; degree: number }>
+  aspects: Array<{
+    planet_a: string
+    planet_b: string
+    aspect: string
+    angle: number
+    description: string
+  }>
+  text: string
+}
+
+export interface PartnerBirthData {
+  name: string
+  birth_date: string
+  birth_time?: string
+  birth_city?: string
+  gender?: string
+}
+
+export interface CompatibilityResult {
+  partner_name: string
+  score: number
+  summary: string
+  user_sun_sign: string
+  partner_sun_sign: string
+  user_moon_sign: string
+  partner_moon_sign: string
+  sun_match: string
+  moon_match: string | null
+  love: string
+  friendship: string
+  challenges: string
+  advice: string
+  text: string
 }
 
 export const api = {
@@ -200,6 +331,11 @@ export const api = {
 
   getPricing: () => request<{
     single_spread: number
+    compatibility: number
+    first_paid_discount_percent: number
+    subscription_per_day_stars: number | null
+    spread_packs: SpreadPack[]
+    love_bundle: LoveBundle | null
     plans: Array<{
       plan: string
       stars: number
@@ -209,20 +345,53 @@ export const api = {
     }>
   }>('/pricing'),
 
-  createPayment: (payment_type: string, plan?: string) =>
+  createPayment: (payment_type: string, plan?: string, promo_code?: string) =>
     request<{
       id: number
       stars_amount: number
       status: string
       plan: string | null
       invoice_link: string | null
+      original_stars_amount: number | null
+      discount_percent: number | null
+      promo_code: string | null
+      free: boolean
     }>('/payments', {
       method: 'POST',
-      body: JSON.stringify({ payment_type, plan }),
+      body: JSON.stringify({ payment_type, plan, promo_code }),
     }),
+
+  validatePromo: (code: string) =>
+    request<{ code: string; discount_percent: number; uses_left: number | null }>(
+      '/promo/validate',
+      {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      },
+    ),
 
   acceptTerms: () =>
     request<{ terms_accepted: boolean; accepted_at: string }>('/me/accept-terms', {
       method: 'POST',
+    }),
+
+  getCardOfDay: () => request<CardOfDay>('/card-of-day'),
+
+  getPortrait: () => request<ZodiacPortrait>('/profile/portrait'),
+
+  getNatalChart: () => request<NatalChart>('/profile/natal-chart'),
+
+  getCompatibility: (data: PartnerBirthData) =>
+    request<CompatibilityResult>('/astrology/compatibility', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getPreferences: () => request<{ daily_card_push: boolean }>('/me/preferences'),
+
+  updatePreferences: (data: { daily_card_push?: boolean }) =>
+    request<{ daily_card_push: boolean }>('/me/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 }

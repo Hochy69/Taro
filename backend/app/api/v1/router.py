@@ -9,15 +9,22 @@ from app.application.dto.schemas import (
     AcceptTermsResponse,
     AIResultResponse,
     CardResponse,
+    CardOfDayResponse,
     CategoryResponse,
+    CompatibilityResponse,
     CreateSpreadRequest,
     FavoriteRequest,
     HistoryItemResponse,
     LimitsResponse,
+    LunarBirthResponse,
+    NatalChartResponse,
+    PartnerBirthData,
     PaymentCreateRequest,
     PaymentResponse,
     PricingResponse,
     ProfileUpdate,
+    PromoValidateRequest,
+    PromoValidateResponse,
     ReferralPendingRequest,
     ReferralResponse,
     ShareMessageResponse,
@@ -28,12 +35,29 @@ from app.application.dto.schemas import (
     TelegramAuthRequest,
     TelegramAuthResponse,
     UserResponse,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
+    ZodiacPortraitResponse,
+)
+from app.application.services.card_of_day_service import get_card_of_day
+from app.application.services.compatibility_service import build_compatibility
+from app.application.services.lunar_service import render_lunar_birth_text
+from app.application.services.natal_chart_service import build_natal_chart
+from app.application.services.marketing_service import (
+    count_completed_spreads,
+    first_paid_discounted_price,
+    is_first_paid_discount_eligible,
+    love_bundle_base_price,
+    love_bundle_price,
+    spread_pack_savings_percent,
 )
 from app.application.services.payment_service import PLAN_DURATIONS, PaymentService
-from app.application.services.referral_service import ReferralService
+from app.application.services.promo_service import PromoService, discounted_price
+from app.application.services.referral_service import ReferralService, consume_compatibility_credit
 from app.application.services.share_service import prepare_spread_share_message
 from app.application.services.spread_service import SpreadService
 from app.application.services.tarot_ai_service import get_zodiac_sign
+from app.application.services.zodiac_portrait_templates import render_zodiac_portrait
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.infrastructure.database.models import (
@@ -44,9 +68,23 @@ from app.infrastructure.database.models import (
     SpreadCard,
     SpreadStatus,
     SubscriptionPlan,
+    User,
 )
 
 router = APIRouter()
+
+
+def _profile_to_dto(profile) -> ProfileUpdate | None:
+    if not profile:
+        return None
+    return ProfileUpdate(
+        name=profile.name,
+        birth_date=profile.birth_date,
+        birth_time=profile.birth_time,
+        birth_city=profile.birth_city,
+        gender=profile.gender,
+        zodiac_sign=profile.zodiac_sign,
+    )
 
 
 @router.post("/auth/telegram", response_model=TelegramAuthResponse)
@@ -103,17 +141,16 @@ async def auth_dev(db: DbSession):
     return _build_auth_response(user, token)
 
 
+def _effective_premium(user: User) -> bool:
+    """Admins always have full premium access in the app."""
+    return user.is_premium or user.is_admin
+
+
 def _build_auth_response(user, token: str) -> TelegramAuthResponse:
     is_returning = user.profile is not None and user.profile.name is not None
     last_category = user.profile.last_category_slug if user.profile else None
 
-    profile_data = None
-    if user.profile:
-        profile_data = ProfileUpdate(
-            name=user.profile.name,
-            birth_date=user.profile.birth_date,
-            zodiac_sign=user.profile.zodiac_sign,
-        )
+    profile_data = _profile_to_dto(user.profile)
 
     return TelegramAuthResponse(
         access_token=token,
@@ -122,7 +159,7 @@ def _build_auth_response(user, token: str) -> TelegramAuthResponse:
             telegram_id=user.telegram_id,
             first_name=user.first_name,
             username=user.username,
-            is_premium=user.is_premium,
+            is_premium=_effective_premium(user),
             terms_accepted=user.terms_accepted_at is not None,
             profile=profile_data,
         ),
@@ -141,22 +178,116 @@ async def get_categories(db: DbSession):
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(user: CurrentUser):
-    profile_data = None
-    if user.profile:
-        profile_data = ProfileUpdate(
-            name=user.profile.name,
-            birth_date=user.profile.birth_date,
-            zodiac_sign=user.profile.zodiac_sign,
-        )
     return UserResponse(
         id=user.id,
         telegram_id=user.telegram_id,
         first_name=user.first_name,
         username=user.username,
-        is_premium=user.is_premium,
+        is_premium=_effective_premium(user),
         terms_accepted=user.terms_accepted_at is not None,
-        profile=profile_data,
+        profile=_profile_to_dto(user.profile),
     )
+
+
+@router.get("/card-of-day", response_model=CardOfDayResponse)
+async def card_of_day(user: RequireTermsUser, db: DbSession):
+    name = user.profile.name if user.profile and user.profile.name else (user.first_name or "друг")
+    zodiac = user.profile.zodiac_sign if user.profile else None
+    data = await get_card_of_day(db, user.id, name, zodiac)
+    return CardOfDayResponse(
+        date=data["date"],
+        card=data["card"],
+        meaning=data["meaning"],
+        advice=data["advice"],
+        conclusion=data["conclusion"],
+        text=data["text"],
+    )
+
+
+@router.get("/profile/portrait", response_model=ZodiacPortraitResponse)
+async def profile_portrait(user: RequireTermsUser):
+    if not user.profile or not user.profile.birth_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Заполните дату рождения в анкете, чтобы открыть портрет.",
+        )
+    name = user.profile.name or user.first_name or "друг"
+    zodiac = user.profile.zodiac_sign or get_zodiac_sign(user.profile.birth_date)
+    portrait = render_zodiac_portrait(name, zodiac, user.profile.gender)
+    lunar = render_lunar_birth_text(name, user.profile.birth_date)
+    return ZodiacPortraitResponse(
+        zodiac_sign=portrait["zodiac_sign"],
+        emoji=portrait["emoji"],
+        summary=portrait["summary"],
+        essence=portrait["essence"],
+        strengths=portrait["strengths"],
+        shadow=portrait["shadow"],
+        love=portrait["love"],
+        career=portrait["career"],
+        advice=portrait["advice"],
+        text=portrait["text"],
+        lunar=LunarBirthResponse(**lunar),
+    )
+
+
+@router.get("/profile/natal-chart", response_model=NatalChartResponse)
+async def profile_natal_chart(user: RequireTermsUser):
+    if not user.profile or not user.profile.birth_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Заполните дату рождения в анкете, чтобы построить натальную карту.",
+        )
+    name = user.profile.name or user.first_name or "друг"
+    data = build_natal_chart(
+        name,
+        user.profile.birth_date,
+        user.profile.birth_time,
+        user.profile.birth_city,
+    )
+    return NatalChartResponse(**data)
+
+
+@router.post("/astrology/compatibility", response_model=CompatibilityResponse)
+async def astrology_compatibility(body: PartnerBirthData, user: RequireTermsUser, db: DbSession):
+    if not user.profile or not user.profile.birth_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Сначала заполните свои данные рождения в анкете.",
+        )
+    spread_service = SpreadService(db)
+    if not user.is_admin:
+        is_premium = await spread_service._is_premium(user.id)
+        if not is_premium and not await consume_compatibility_credit(db, user.id):
+            raise HTTPException(
+                status_code=402,
+                detail=f"Для проверки совместимости нужна оплата {settings.price_compatibility} ⭐. Купите на главном экране.",
+            )
+    user_name = user.profile.name or user.first_name or "Вы"
+    data = build_compatibility(
+        user_name,
+        user.profile.birth_date,
+        user.profile.birth_time,
+        user.profile.birth_city,
+        body.name,
+        body.birth_date,
+        body.birth_time,
+        body.birth_city,
+    )
+    return CompatibilityResponse(**data)
+
+
+@router.get("/me/preferences", response_model=UserPreferencesResponse)
+async def get_preferences(user: CurrentUser):
+    return UserPreferencesResponse(daily_card_push=user.daily_card_push)
+
+
+@router.patch("/me/preferences", response_model=UserPreferencesResponse)
+async def update_preferences(body: UserPreferencesUpdate, user: CurrentUser, db: DbSession):
+    if body.daily_card_push is not None:
+        user.daily_card_push = body.daily_card_push
+    await db.commit()
+    await db.refresh(user)
+    return UserPreferencesResponse(daily_card_push=user.daily_card_push)
 
 
 @router.post("/me/accept-terms", response_model=AcceptTermsResponse)
@@ -202,21 +333,56 @@ async def get_limits(user: CurrentUser, db: DbSession):
         next_date = user.limits.last_reset_date + timedelta(days=period_days)
         next_available_at = datetime.combine(next_date, time.min).isoformat()
 
+    completed = await count_completed_spreads(db, user.id)
+    first_paid_eligible = await is_first_paid_discount_eligible(db, user.id)
+
     return LimitsResponse(
         can_spread=can_spread,
         used_today=used,
         daily_limit=limit,
         is_premium=is_premium,
         bonus_spreads=bonus,
+        compatibility_credits=user.limits.compatibility_credits if user.limits else 0,
         period_days=period_days,
         next_available_at=next_available_at,
+        completed_spreads=completed,
+        first_paid_discount_eligible=first_paid_eligible,
+        first_paid_discounted_price=first_paid_discounted_price() if first_paid_eligible else None,
+        first_paid_discount_percent=settings.first_paid_discount_percent if first_paid_eligible else 0,
     )
 
 
 @router.get("/pricing", response_model=PricingResponse)
 async def get_pricing():
+    bundle_base = love_bundle_base_price()
+    bundle_final = love_bundle_price()
     return PricingResponse(
         single_spread=settings.price_single_spread,
+        compatibility=settings.price_compatibility,
+        first_paid_discount_percent=settings.first_paid_discount_percent,
+        subscription_per_day_stars=max(1, round(settings.price_subscription_1m / 30)),
+        spread_packs=[
+            {
+                "pack": "spread_pack_3",
+                "stars": settings.price_spread_pack_3,
+                "spreads": 3,
+                "savings_percent": spread_pack_savings_percent(settings.price_spread_pack_3, 3),
+                "label": "3 расклада",
+            },
+            {
+                "pack": "spread_pack_5",
+                "stars": settings.price_spread_pack_5,
+                "spreads": 5,
+                "savings_percent": spread_pack_savings_percent(settings.price_spread_pack_5, 5),
+                "label": "5 раскладов",
+            },
+        ],
+        love_bundle={
+            "stars": bundle_final,
+            "original_stars": bundle_base,
+            "savings_percent": settings.love_bundle_discount_percent,
+            "description": "Совместимость + расклад на любовь",
+        },
         plans=[
             SubscriptionPlanResponse(
                 plan="month_1",
@@ -401,25 +567,142 @@ _PLAN_TITLES = {
 }
 
 
+@router.post("/promo/validate", response_model=PromoValidateResponse)
+async def validate_promo(body: PromoValidateRequest, user: RequireTermsUser, db: DbSession):
+    promo_service = PromoService(db)
+    await promo_service.ensure_default_codes()
+    try:
+        promo = await promo_service.validate_for_user(body.code, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return PromoValidateResponse(
+        code=promo.code,
+        discount_percent=promo.discount_percent,
+        uses_left=(
+            max(0, promo.max_uses - promo.used_count)
+            if promo.max_uses is not None
+            else None
+        ),
+    )
+
+
 @router.post("/payments", response_model=PaymentResponse)
 async def create_payment(body: PaymentCreateRequest, user: RequireTermsUser, db: DbSession):
     service = PaymentService(db)
+    promo_service = PromoService(db)
+    await promo_service.ensure_default_codes()
+
+    promo = None
+    discount_percent: int | None = None
+    auto_discount_percent = 0
+    if body.promo_code:
+        try:
+            promo = await promo_service.validate_for_user(body.promo_code, user.id)
+            discount_percent = promo.discount_percent
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    effective_discount = discount_percent or 0
 
     if body.payment_type == "single_spread":
+        if not promo and await is_first_paid_discount_eligible(db, user.id):
+            auto_discount_percent = settings.first_paid_discount_percent
+            effective_discount = auto_discount_percent
+        base_price = service.get_single_spread_price()
+        final_price = discounted_price(base_price, effective_discount)
         payment = await service.create_payment(
-            user, PaymentType.SINGLE_SPREAD, service.get_single_spread_price()
+            user,
+            PaymentType.SINGLE_SPREAD,
+            final_price,
+            original_stars_amount=base_price,
+            promo_code_id=promo.id if promo else None,
         )
         title = "Разовый расклад Мир Таро"
-        description = "Один дополнительный расклад Таро сверх дневного лимита."
+        if auto_discount_percent:
+            description = f"Первый платный расклад со скидкой {auto_discount_percent}%."
+        else:
+            description = "Один дополнительный расклад Таро сверх дневного лимита."
+    elif body.payment_type == "spread_pack_3":
+        base_price = service.get_spread_pack_price("spread_pack_3")
+        final_price = discounted_price(base_price, effective_discount)
+        payment = await service.create_payment(
+            user,
+            PaymentType.SPREAD_PACK_3,
+            final_price,
+            original_stars_amount=base_price,
+            promo_code_id=promo.id if promo else None,
+        )
+        title = "Пакет 3 расклада"
+        description = "Три дополнительных расклада Таро — выгоднее разовой покупки."
+    elif body.payment_type == "spread_pack_5":
+        base_price = service.get_spread_pack_price("spread_pack_5")
+        final_price = discounted_price(base_price, effective_discount)
+        payment = await service.create_payment(
+            user,
+            PaymentType.SPREAD_PACK_5,
+            final_price,
+            original_stars_amount=base_price,
+            promo_code_id=promo.id if promo else None,
+        )
+        title = "Пакет 5 раскладов"
+        description = "Пять дополнительных раскладов Таро — максимальная выгода."
+    elif body.payment_type == "love_bundle":
+        base_price = love_bundle_base_price()
+        if not promo:
+            effective_discount = settings.love_bundle_discount_percent
+        final_price = discounted_price(base_price, effective_discount)
+        payment = await service.create_payment(
+            user,
+            PaymentType.LOVE_BUNDLE,
+            final_price,
+            original_stars_amount=base_price,
+            promo_code_id=promo.id if promo else None,
+        )
+        title = "Пакет «Любовь»"
+        description = "Совместимость + расклад на отношения со скидкой."
+    elif body.payment_type == "compatibility":
+        base_price = service.get_compatibility_price()
+        final_price = discounted_price(base_price, effective_discount)
+        payment = await service.create_payment(
+            user,
+            PaymentType.COMPATIBILITY,
+            final_price,
+            original_stars_amount=base_price,
+            promo_code_id=promo.id if promo else None,
+        )
+        title = "Проверка совместимости"
+        description = "Одна проверка совместимости по Солнцу и Луне."
     elif body.payment_type == "subscription" and body.plan:
         plan = SubscriptionPlan(body.plan)
+        base_price = service.get_subscription_price(plan)
+        final_price = discounted_price(base_price, effective_discount)
         payment = await service.create_payment(
-            user, PaymentType.SUBSCRIPTION, service.get_subscription_price(plan), plan
+            user,
+            PaymentType.SUBSCRIPTION,
+            final_price,
+            plan,
+            original_stars_amount=base_price,
+            promo_code_id=promo.id if promo else None,
         )
         title = _PLAN_TITLES.get(body.plan, "Подписка Мир Таро")
         description = "Premium-доступ: 15 раскладов в сутки, полная история, все функции."
     else:
         raise HTTPException(status_code=400, detail="Invalid payment request")
+
+    if payment.stars_amount <= 0 and promo:
+        await service.complete_free_payment(payment, promo)
+        return PaymentResponse(
+            id=payment.id,
+            payment_type=payment.payment_type.value,
+            stars_amount=0,
+            status=payment.status.value,
+            plan=payment.plan.value if payment.plan else None,
+            invoice_link=None,
+            original_stars_amount=payment.original_stars_amount,
+            discount_percent=effective_discount or None,
+            promo_code=promo.code,
+            free=True,
+        )
 
     invoice_link: str | None = None
     try:
@@ -429,7 +712,7 @@ async def create_payment(body: PaymentCreateRequest, user: RequireTermsUser, db:
             payload=str(payment.id),
             stars=payment.stars_amount,
         )
-    except Exception as e:  # noqa: BLE001 — do not fail the whole request on invoice error
+    except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Не удалось создать счёт Telegram Stars: {e}")
 
     return PaymentResponse(
@@ -439,6 +722,10 @@ async def create_payment(body: PaymentCreateRequest, user: RequireTermsUser, db:
         status=payment.status.value,
         plan=payment.plan.value if payment.plan else None,
         invoice_link=invoice_link,
+        original_stars_amount=payment.original_stars_amount,
+        discount_percent=effective_discount or None,
+        promo_code=promo.code if promo else None,
+        free=False,
     )
 
 

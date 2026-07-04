@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     ai_provider: str = "openai"
     ai_model: str = "gpt-4o-mini"
+    template_only: bool = True
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     google_api_key: str = ""
@@ -54,10 +55,17 @@ class Settings(BaseSettings):
     free_spreads_per_period: int = 1
     free_spread_period_days: int = 3
 
-    price_single_spread: int = 150
+    price_single_spread: int = 99
     price_subscription_1m: int = 450
     price_subscription_3m: int = 1200
     price_subscription_6m: int = 2100
+    price_compatibility: int = 100
+
+    price_spread_pack_3: int = 249
+    price_spread_pack_5: int = 399
+    first_paid_discount_percent: int = 30
+    love_bundle_discount_percent: int = 20
+    referral_premium_trial_days: int = 3
 
     internal_api_secret: str = "change-me-internal-secret"
 

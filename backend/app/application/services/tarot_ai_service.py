@@ -7,6 +7,7 @@ from app.application.services.reading_templates import (
     PSYCHOLOGICAL_SYSTEM_PROMPT,
     render_fallback,
 )
+from app.core.config import settings
 from app.infrastructure.ai.providers import AIResponse, get_ai_provider
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,28 @@ class TarotAIService:
 варьируй формулировки, не повторяй одни и те же обороты из прошлых ответов."""
 
         start = time.monotonic()
+        if settings.template_only:
+            fb = render_fallback(
+                name=name,
+                category=category,
+                situation=situation,
+                emotion=emotion,
+                cards=cards,
+                slug=category_slug,
+            )
+            elapsed_ms = int((time.monotonic() - start) * 1000)
+            return AIResponse(
+                text=fb["text"],
+                past=fb["past"],
+                present=fb["present"],
+                future=fb["future"],
+                advice=fb["advice"],
+                conclusion=fb["conclusion"],
+                prompt_tokens=0,
+                completion_tokens=0,
+                generation_time_ms=elapsed_ms,
+            )
+
         try:
             provider = get_ai_provider()
             text, prompt_tokens, completion_tokens = await provider.generate(

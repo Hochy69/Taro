@@ -12,6 +12,7 @@ import {
 } from '@/api/client'
 import { useAppNavigation, useSyncRouteToStore } from '@/hooks/useAppNavigation'
 import { ROUTES } from '@/lib/routes'
+import { tryApplyPromoFromUrl } from '@/lib/applyPromoFromUrl'
 import { AppHeader } from '@/components/AppHeader'
 import { TermsGate } from '@/components/TermsGate'
 import AdminDashboard from '@/pages/admin/AdminDashboard'
@@ -22,11 +23,15 @@ import { DeckPage } from '@/pages/DeckPage'
 import { ReadingPage } from '@/pages/ReadingPage'
 import { HistoryPage } from '@/pages/HistoryPage'
 import { SubscriptionPage } from '@/pages/SubscriptionPage'
+import { CardOfDayPage } from '@/pages/CardOfDayPage'
+import { PortraitPage } from '@/pages/PortraitPage'
+import { NatalChartPage } from '@/pages/NatalChartPage'
+import { CompatibilityPage } from '@/pages/CompatibilityPage'
 
 function AppRoutes() {
   useSyncRouteToStore()
   return (
-    <>
+    <div className="w-full max-w-full overflow-x-hidden">
       <AppHeader />
       <Routes>
         <Route path={ROUTES.welcome} element={<WelcomePage />} />
@@ -36,15 +41,22 @@ function AppRoutes() {
         <Route path={ROUTES.reading} element={<ReadingPage />} />
         <Route path={ROUTES.history} element={<HistoryPage />} />
         <Route path={ROUTES.subscription} element={<SubscriptionPage />} />
+        <Route path={ROUTES.cardOfDay} element={<CardOfDayPage />} />
+        <Route path={ROUTES.portrait} element={<PortraitPage />} />
+        <Route path={ROUTES.natalChart} element={<NatalChartPage />} />
+        <Route path={ROUTES.compatibility} element={<CompatibilityPage />} />
         <Route path="*" element={<Navigate to={ROUTES.welcome} replace />} />
       </Routes>
-    </>
+    </div>
   )
 }
 
 type ProfileMeta = {
   name?: string | null
   birth_date?: string | null
+  birth_time?: string | null
+  birth_city?: string | null
+  gender?: string | null
   zodiac_sign?: string | null
 } | null
 
@@ -70,9 +82,19 @@ function applyAuth(
 
   // Remember the user's earlier answers so returning users don't re-enter them.
   if (profile) {
-    const prefill: { name?: string; birthDate?: string; zodiacSign?: string } = {}
+    const prefill: Partial<{
+      name: string
+      birthDate: string
+      birthTime: string
+      birthCity: string
+      gender: string
+      zodiacSign: string
+    }> = {}
     if (profile.name) prefill.name = profile.name
     if (profile.birth_date) prefill.birthDate = profile.birth_date
+    if (profile.birth_time) prefill.birthTime = profile.birth_time
+    if (profile.birth_city) prefill.birthCity = profile.birth_city
+    if (profile.gender) prefill.gender = profile.gender
     if (profile.zodiac_sign) prefill.zodiacSign = profile.zodiac_sign
     if (Object.keys(prefill).length > 0) {
       updateQuestionnaire(prefill)
@@ -108,6 +130,10 @@ function SessionBootstrap() {
       }
     }
 
+    const afterAuth = async () => {
+      await tryApplyPromoFromUrl()
+    }
+
     const bootstrap = async () => {
       try {
         setBootError(null)
@@ -127,7 +153,8 @@ function SessionBootstrap() {
             auth.user.profile ?? null,
             auth.user.terms_accepted,
           )
-          landing(auth.is_returning ? 'returning' : 'welcome')
+          await afterAuth()
+          landing('welcome')
           return
         }
 
@@ -145,6 +172,7 @@ function SessionBootstrap() {
               me.profile ?? meta?.profile ?? null,
               me.terms_accepted,
             )
+            await afterAuth()
             return
           } catch {
             clearAccessToken()
@@ -163,7 +191,8 @@ function SessionBootstrap() {
           auth.user.profile ?? null,
           auth.user.terms_accepted,
         )
-        landing(auth.is_returning ? 'returning' : 'welcome')
+        await afterAuth()
+        landing('welcome')
       } catch (e) {
         console.warn('Session bootstrap failed:', e)
         if (tg?.initData) {

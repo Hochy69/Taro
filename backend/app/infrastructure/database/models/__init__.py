@@ -36,6 +36,10 @@ class SubscriptionStatus(str, enum.Enum):
 class PaymentType(str, enum.Enum):
     SINGLE_SPREAD = "single_spread"
     SUBSCRIPTION = "subscription"
+    COMPATIBILITY = "compatibility"
+    SPREAD_PACK_3 = "spread_pack_3"
+    SPREAD_PACK_5 = "spread_pack_5"
+    LOVE_BUNDLE = "love_bundle"
 
 
 class PaymentStatus(str, enum.Enum):
@@ -59,6 +63,7 @@ class NotificationType(str, enum.Enum):
     INACTIVE_3D = "inactive_3d"
     INACTIVE_7D = "inactive_7d"
     INACTIVE_14D = "inactive_14d"
+    CARD_OF_DAY = "card_of_day"
 
 
 class User(Base):
@@ -77,6 +82,7 @@ class User(Base):
     referred_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    daily_card_push: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     profile: Mapped["Profile | None"] = relationship(back_populates="user", uselist=False)
@@ -120,7 +126,14 @@ class Profile(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     name: Mapped[str | None] = mapped_column(String(100))
     birth_date: Mapped[date | None] = mapped_column(Date)
+    birth_time: Mapped[str | None] = mapped_column(String(8))
+    birth_city: Mapped[str | None] = mapped_column(String(120))
+    gender: Mapped[str | None] = mapped_column(String(1))
     zodiac_sign: Mapped[str | None] = mapped_column(String(50))
+    lunar_birth_day: Mapped[int | None] = mapped_column(Integer)
+    birth_lat: Mapped[float | None] = mapped_column(Float)
+    birth_lon: Mapped[float | None] = mapped_column(Float)
+    birth_timezone: Mapped[int | None] = mapped_column(Integer)
     last_category_slug: Mapped[str | None] = mapped_column(String(50))
 
     user: Mapped["User"] = relationship(back_populates="profile")
@@ -263,10 +276,45 @@ class Payment(Base):
     payment_type: Mapped[PaymentType] = mapped_column(Enum(PaymentType))
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
     stars_amount: Mapped[int] = mapped_column(Integer)
+    original_stars_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    promo_code_id: Mapped[int | None] = mapped_column(
+        ForeignKey("promo_codes.id", ondelete="SET NULL"), nullable=True
+    )
     plan: Mapped[SubscriptionPlan | None] = mapped_column(Enum(SubscriptionPlan), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="payments")
+    promo_code: Mapped["PromoCode | None"] = relationship(back_populates="payments")
+
+
+class PromoCode(Base):
+    __tablename__ = "promo_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    discount_percent: Mapped[int] = mapped_column(Integer)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    used_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    uses: Mapped[list["PromoCodeUse"]] = relationship(back_populates="promo_code")
+    payments: Mapped[list["Payment"]] = relationship(back_populates="promo_code")
+
+
+class PromoCodeUse(Base):
+    __tablename__ = "promo_code_uses"
+    __table_args__ = (UniqueConstraint("user_id", "promo_code_id", name="uq_promo_user_code"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    promo_code_id: Mapped[int] = mapped_column(ForeignKey("promo_codes.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    promo_code: Mapped["PromoCode"] = relationship(back_populates="uses")
+    user: Mapped["User"] = relationship()
+    payment: Mapped["Payment | None"] = relationship()
 
 
 class UserLimit(Base):
@@ -276,6 +324,7 @@ class UserLimit(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     daily_spreads_used: Mapped[int] = mapped_column(Integer, default=0)
     bonus_spreads: Mapped[int] = mapped_column(Integer, default=0)
+    compatibility_credits: Mapped[int] = mapped_column(Integer, default=0)
     last_reset_date: Mapped[date] = mapped_column(Date, server_default=func.current_date())
 
     user: Mapped["User"] = relationship(back_populates="limits")

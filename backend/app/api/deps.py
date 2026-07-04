@@ -110,10 +110,22 @@ async def authenticate_telegram_user(db: AsyncSession, init_data: str) -> tuple[
             referral_service = ReferralService(db)
             await referral_service.ensure_referral_code(user)
             await referral_service.process_signup(user, parsed.get("start_param"))
+        else:
+            from datetime import datetime, timezone
+
+            user.last_active_at = datetime.now(timezone.utc)
+            if user.referred_by_id is None:
+                referral_service = ReferralService(db)
+                await referral_service.ensure_referral_code(user)
+                await referral_service.process_signup(user, parsed.get("start_param"))
     else:
         from datetime import datetime, timezone
 
         user.last_active_at = datetime.now(timezone.utc)
+        if user.referred_by_id is None:
+            referral_service = ReferralService(db)
+            await referral_service.ensure_referral_code(user)
+            await referral_service.process_signup(user, parsed.get("start_param"))
 
     token = create_access_token({"sub": str(user.id)})
     return user, token

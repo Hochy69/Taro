@@ -8,6 +8,13 @@ class Settings(BaseSettings):
     telegram_webapp_url: str = "http://localhost:5173"
     api_url: str = "http://localhost:8000"
     internal_api_secret: str = "change-me-internal-secret"
+    price_single_spread: int = 99
+    price_subscription_1m: int = 450
+    price_subscription_3m: int = 1200
+    price_subscription_6m: int = 2100
+    price_compatibility: int = 100
+    price_spread_pack_3: int = 249
+    price_spread_pack_5: int = 399
 
 
 settings = Settings()

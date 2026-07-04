@@ -75,6 +75,42 @@ export function ReturningPage() {
               variant="secondary"
               onClick={() => {
                 haptic('light')
+                goTo('cardOfDay')
+              }}
+            >
+              Карта дня 🃏
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                haptic('light')
+                goTo('portrait')
+              }}
+            >
+              Мой портрет ✨
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                haptic('light')
+                goTo('natalChart')
+              }}
+            >
+              Натальная карта 🌌
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                haptic('light')
+                goTo('compatibility')
+              }}
+            >
+              Совместимость 💕
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                haptic('light')
                 resetFlow()
                 goTo('welcome')
               }}

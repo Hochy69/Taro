@@ -4,11 +4,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.application.services.referral_service import grant_bonus_spreads
+from app.application.services.referral_service import grant_bonus_spreads, grant_compatibility_credit
 from app.infrastructure.database.models import (
     Payment,
     PaymentStatus,
     PaymentType,
+    PromoCode,
+    PromoCodeUse,
     Subscription,
     SubscriptionPlan,
     SubscriptionStatus,
@@ -39,21 +41,53 @@ class PaymentService:
     def get_single_spread_price(self) -> int:
         return settings.price_single_spread
 
+    def get_compatibility_price(self) -> int:
+        return settings.price_compatibility
+
+    def get_spread_pack_price(self, pack: str) -> int:
+        if pack == "spread_pack_3":
+            return settings.price_spread_pack_3
+        if pack == "spread_pack_5":
+            return settings.price_spread_pack_5
+        return 0
+
+    def get_love_bundle_price(self) -> int:
+        from app.application.services.marketing_service import love_bundle_price
+
+        return love_bundle_price()
+
     async def create_payment(
         self,
         user: User,
         payment_type: PaymentType,
         stars_amount: int,
         plan: SubscriptionPlan | None = None,
+        original_stars_amount: int | None = None,
+        promo_code_id: int | None = None,
     ) -> Payment:
         payment = Payment(
             user_id=user.id,
             payment_type=payment_type,
             stars_amount=stars_amount,
+            original_stars_amount=original_stars_amount,
+            promo_code_id=promo_code_id,
             plan=plan,
             status=PaymentStatus.PENDING,
         )
         self.session.add(payment)
+        await self.session.flush()
+        return payment
+
+    async def complete_free_payment(self, payment: Payment, promo: PromoCode) -> Payment:
+        """100% promo — grant access without Telegram invoice."""
+        if payment.status == PaymentStatus.COMPLETED:
+            return payment
+        payment.telegram_payment_id = f"promo_{promo.code}_{payment.id}"
+        payment.status = PaymentStatus.COMPLETED
+        await self._apply_purchase(payment)
+        from app.application.services.promo_service import PromoService
+
+        await PromoService(self.session).record_redemption(promo, payment.user_id, payment)
         await self.session.flush()
         return payment
 
@@ -86,6 +120,15 @@ class PaymentService:
         """Grant whatever the completed payment entitles the user to."""
         if payment.payment_type == PaymentType.SINGLE_SPREAD:
             await grant_bonus_spreads(self.session, payment.user_id, 1)
+        elif payment.payment_type == PaymentType.SPREAD_PACK_3:
+            await grant_bonus_spreads(self.session, payment.user_id, 3)
+        elif payment.payment_type == PaymentType.SPREAD_PACK_5:
+            await grant_bonus_spreads(self.session, payment.user_id, 5)
+        elif payment.payment_type == PaymentType.COMPATIBILITY:
+            await grant_compatibility_credit(self.session, payment.user_id, 1)
+        elif payment.payment_type == PaymentType.LOVE_BUNDLE:
+            await grant_compatibility_credit(self.session, payment.user_id, 1)
+            await grant_bonus_spreads(self.session, payment.user_id, 1)
         elif payment.payment_type == PaymentType.SUBSCRIPTION and payment.plan:
             await self._activate_subscription(
                 payment.user_id, payment.plan, payment.stars_amount
@@ -107,8 +150,26 @@ class PaymentService:
         payment.telegram_payment_id = telegram_payment_charge_id
         payment.status = PaymentStatus.COMPLETED
         await self._apply_purchase(payment)
+        if payment.promo_code_id:
+            await self._record_promo_redemption(payment)
         await self.session.flush()
         return payment
+
+    async def _record_promo_redemption(self, payment: Payment) -> None:
+        existing = await self.session.execute(
+            select(PromoCodeUse.id).where(PromoCodeUse.payment_id == payment.id)
+        )
+        if existing.scalar_one_or_none() is not None:
+            return
+        promo_result = await self.session.execute(
+            select(PromoCode).where(PromoCode.id == payment.promo_code_id)
+        )
+        promo = promo_result.scalar_one_or_none()
+        if not promo:
+            return
+        from app.application.services.promo_service import PromoService
+
+        await PromoService(self.session).record_redemption(promo, payment.user_id, payment)
 
     async def confirm_payment(self, telegram_payment_id: str, user_id: int) -> Payment | None:
         result = await self.session.execute(

@@ -36,13 +36,14 @@ def _unreachable_note() -> str:
     )
 
 
-def webapp_keyboard() -> InlineKeyboardMarkup:
+def webapp_keyboard(url: str | None = None) -> InlineKeyboardMarkup:
+    target = url or get_webapp_url()
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="🔮 Открыть расклад",
-                    web_app=WebAppInfo(url=get_webapp_url()),
+                    web_app=WebAppInfo(url=target),
                 )
             ]
         ]
@@ -86,6 +87,7 @@ async def cmd_help(message: Message):
         "🔮 <b>Мир Таро — команды</b>\n\n"
         "• /start — приветствие и расклад\n"
         "• /app — открыть мини-приложение\n"
+        "• /card — карта дня\n"
         "• /premium — подписка и разовые расклады\n"
         "• /invite — пригласить друга (бонусный расклад)\n"
         "• /history — история ваших раскладов\n"
@@ -104,6 +106,20 @@ async def cmd_app(message: Message):
         "🔮 Нажмите кнопку ниже, чтобы открыть Мир Таро:"
         f"{'' if reachable else _unreachable_note()}",
         reply_markup=webapp_keyboard(),
+        parse_mode="HTML",
+    )
+
+
+@dp.message(Command("card"))
+async def cmd_card(message: Message):
+    webapp_url = f"{get_webapp_url().rstrip('/')}/card-of-day"
+    reachable = await _webapp_is_reachable(webapp_url)
+    await message.answer(
+        "🃏 <b>Карта дня</b>\n\n"
+        "Откройте мини-приложение — там вас ждёт персональная карта "
+        "с расшифровкой на сегодня."
+        f"{'' if reachable else _unreachable_note()}",
+        reply_markup=webapp_keyboard(webapp_url),
         parse_mode="HTML",
     )
 
@@ -132,11 +148,16 @@ async def cmd_invite(message: Message):
 
 @dp.message(Command("premium"))
 async def cmd_premium(message: Message):
+    p = settings
     await message.answer(
         "⭐️ <b>Premium подписка</b>\n\n"
-        "📅 1 месяц — 450 ⭐️\n"
-        "📅 3 месяца — 1200 ⭐️\n"
-        "📅 6 месяцев — 2100 ⭐️\n\n"
+        f"🃏 Разовый расклад — {p.price_single_spread} ⭐️\n"
+        f"📦 3 расклада — {p.price_spread_pack_3} ⭐️\n"
+        f"📦 5 раскладов — {p.price_spread_pack_5} ⭐️\n"
+        f"💕 Совместимость — {p.price_compatibility} ⭐️\n"
+        f"📅 1 месяц — {p.price_subscription_1m} ⭐️\n"
+        f"📅 3 месяца — {p.price_subscription_3m} ⭐️\n"
+        f"📅 6 месяцев — {p.price_subscription_6m} ⭐️\n\n"
         "• 15 раскладов в сутки\n"
         "• Полная история\n"
         "• Все функции\n\n"
@@ -167,9 +188,27 @@ async def cmd_admin(message: Message):
     admin_url = result.get("admin_url")
     await message.answer(
         "✅ <b>Доступ администратора активирован навсегда.</b>\n\n"
-        "Теперь у вас безлимитные расклады и полный доступ ко всем функциям.\n\n"
-        f"🔐 Админ-панель: {admin_url}",
-        reply_markup=webapp_keyboard(),
+        "🔓 Безлимитные расклады, совместимость, полная история и все функции — "
+        "навсегда на этом аккаунте.\n\n"
+        "Перезайдите в мини-приложение (закройте и откройте снова), "
+        "чтобы обновился доступ в приложении.\n\n"
+        "Откройте админ-панель кнопкой ниже 👇",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔐 Админ-панель",
+                        web_app=WebAppInfo(url=admin_url),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🔮 Открыть приложение",
+                        web_app=WebAppInfo(url=get_webapp_url()),
+                    )
+                ],
+            ]
+        ),
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
@@ -205,7 +244,7 @@ async def _save_pending_referral(telegram_id: int, referral_payload: str) -> Non
     url = f"{settings.api_url.rstrip('/')}/api/v1/referral/pending"
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(
+            resp = await client.post(
                 url,
                 json={
                     "telegram_id": telegram_id,
@@ -214,6 +253,12 @@ async def _save_pending_referral(telegram_id: int, referral_payload: str) -> Non
                 },
                 timeout=15.0,
             )
+            if resp.status_code != 200:
+                logging.warning(
+                    "Failed to save pending referral: HTTP %s %s",
+                    resp.status_code,
+                    resp.text[:200],
+                )
     except Exception as e:  # noqa: BLE001
         logging.warning("Failed to save pending referral: %s", e)
 

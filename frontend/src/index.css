@@ -7,13 +7,26 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-tarot-dark text-white font-body antialiased;
     overscroll-behavior: none;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   #root {
-    @apply min-h-screen;
+    @apply min-h-screen overflow-x-hidden max-w-full;
+  }
+
+  input,
+  textarea,
+  select {
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -23,7 +36,11 @@
   }
 
   .glass-card {
-    @apply glass p-4 shadow-lg shadow-purple-900/20;
+    @apply glass p-4 shadow-lg shadow-purple-900/20 min-w-0 overflow-hidden;
+  }
+
+  .page-shell {
+    @apply min-h-screen gradient-bg w-full max-w-full overflow-x-hidden box-border px-4 pt-20 pb-8;
   }
 
   .gradient-bg {

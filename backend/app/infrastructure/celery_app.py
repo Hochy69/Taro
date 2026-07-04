@@ -24,6 +24,10 @@ celery_app.conf.update(
             "task": "app.infrastructure.tasks.check_inactive_users",
             "schedule": crontab(hour=10, minute=0),
         },
+        "send-daily-card-push": {
+            "task": "app.infrastructure.tasks.send_daily_card_push",
+            "schedule": crontab(hour=6, minute=0),
+        },
     },
 )
 

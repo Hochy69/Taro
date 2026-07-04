@@ -56,6 +56,7 @@ async def grant_admin(body: AdminGrantRequest, db: AsyncSession = Depends(get_db
         "granted": True,
         "admin_token": token,
         "admin_url": f"{settings.frontend_url.rstrip('/')}/admin?token={token}",
+        "message": "Полный доступ навсегда: безлимитные расклады, совместимость, история, все функции.",
     }
 
 
@@ -68,6 +69,12 @@ async def get_admin(
     token = authorization.split(" ", 1)[1]
     payload = decode_token(token, settings.admin_jwt_secret or settings.jwt_secret_key)
     if not payload or payload.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    user_id = int(payload["sub"])
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.is_admin.is_(True), User.is_blocked.is_(False))
+    )
+    if not result.scalar_one_or_none():
         raise HTTPException(status_code=403, detail="Admin access required")
     return payload
 
@@ -112,8 +119,20 @@ async def block_user(user_id: int, admin=Depends(get_admin), db: AsyncSession = 
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404)
+    if user.is_admin:
+        raise HTTPException(status_code=400, detail="Cannot block admin")
     user.is_blocked = True
     return {"status": "blocked"}
+
+
+@router.post("/users/{user_id}/unblock")
+async def unblock_user(user_id: int, admin=Depends(get_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404)
+    user.is_blocked = False
+    return {"status": "unblocked"}
 
 
 @router.get("/finance")

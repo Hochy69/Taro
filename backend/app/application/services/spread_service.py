@@ -137,17 +137,20 @@ class SpreadService:
         emotion: str,
         profile_data: dict | None = None,
     ) -> Spread:
-        is_premium = await self._is_premium(user.id)
         limit_record = await self._ensure_limit_record(user)
-        self._reset_window_if_needed(limit_record, is_premium)
-        base_limit = self._base_limit(is_premium)
+        consume_from_bonus = False
 
-        if limit_record.daily_spreads_used < base_limit:
-            consume_from_bonus = False
-        elif limit_record.bonus_spreads > 0:
-            consume_from_bonus = True
-        else:
-            raise PermissionError("Daily spread limit reached")
+        if not user.is_admin:
+            is_premium = await self._is_premium(user.id)
+            self._reset_window_if_needed(limit_record, is_premium)
+            base_limit = self._base_limit(is_premium)
+
+            if limit_record.daily_spreads_used < base_limit:
+                consume_from_bonus = False
+            elif limit_record.bonus_spreads > 0:
+                consume_from_bonus = True
+            else:
+                raise PermissionError("Daily spread limit reached")
 
         cat_result = await self.session.execute(
             select(Category).where(Category.slug == category_slug)
@@ -163,8 +166,24 @@ class SpreadService:
             profile.name = profile_data.get("name", profile.name)
             if profile_data.get("birth_date"):
                 profile.birth_date = profile_data["birth_date"]
+            if profile_data.get("birth_time") is not None:
+                profile.birth_time = profile_data.get("birth_time") or None
+            if profile_data.get("birth_city") is not None:
+                profile.birth_city = profile_data.get("birth_city") or None
+            if profile_data.get("gender") is not None:
+                profile.gender = profile_data.get("gender") or None
             profile.zodiac_sign = profile_data.get("zodiac_sign", profile.zodiac_sign)
             profile.last_category_slug = category_slug
+            if profile.birth_date:
+                from app.application.services.geocoding_service import resolve_city
+                from app.application.services.lunar_service import get_lunar_day
+
+                profile.lunar_birth_day = get_lunar_day(profile.birth_date)
+                if profile.birth_city:
+                    lat, lon, tz, _ = resolve_city(profile.birth_city)
+                    profile.birth_lat = lat
+                    profile.birth_lon = lon
+                    profile.birth_timezone = tz
 
         spread = Spread(
             user_id=user.id,
@@ -189,10 +208,11 @@ class SpreadService:
             )
             self.session.add(spread_card)
 
-        if consume_from_bonus:
-            limit_record.bonus_spreads -= 1
-        else:
-            limit_record.daily_spreads_used += 1
+        if not user.is_admin:
+            if consume_from_bonus:
+                limit_record.bonus_spreads -= 1
+            else:
+                limit_record.daily_spreads_used += 1
 
         self.session.add(
             AnalyticsEvent(event_type="spread_created", user_id=user.id, category_id=category.id)
@@ -247,10 +267,13 @@ class SpreadService:
             category_slug=spread.category.slug,
         )
 
+        provider_name = "template" if settings.template_only else settings.ai_provider
+        model_name = "local" if settings.template_only else settings.ai_model
+
         ai_result = AIResult(
             spread_id=spread.id,
-            provider=settings.ai_provider,
-            model=settings.ai_model,
+            provider=provider_name,
+            model=model_name,
             prompt_tokens=ai_response.prompt_tokens,
             completion_tokens=ai_response.completion_tokens,
             generation_time_ms=ai_response.generation_time_ms,

@@ -17,7 +17,12 @@ const EMOTIONS = [
   { id: 'other', label: 'другое', emoji: '💭' },
 ]
 
-const STEPS = ['name', 'birthDate', 'situation', 'emotion'] as const
+const GENDERS = [
+  { id: 'm', label: 'Мужской', emoji: '♂️' },
+  { id: 'w', label: 'Женский', emoji: '♀️' },
+]
+
+const STEPS = ['name', 'birthDate', 'birthDetails', 'situation', 'emotion'] as const
 
 export function QuestionnairePage() {
   const {
@@ -35,15 +40,13 @@ export function QuestionnairePage() {
   const step = STEPS[questionnaireStep]
   const isLast = questionnaireStep === STEPS.length - 1
 
-  // Returning users already have name & birth date — skip straight to the
-  // situation step instead of making them re-enter what we remember.
   useEffect(() => {
     if (
       questionnaireStep === 0 &&
       questionnaire.name.trim().length >= 2 &&
       questionnaire.birthDate.length > 0
     ) {
-      setQuestionnaireStep(2)
+      setQuestionnaireStep(3)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -54,6 +57,12 @@ export function QuestionnairePage() {
         return questionnaire.name.trim().length >= 2
       case 'birthDate':
         return questionnaire.birthDate.length > 0
+      case 'birthDetails':
+        return (
+          questionnaire.birthCity.trim().length >= 2 &&
+          (questionnaire.birthTimeUnknown || questionnaire.birthTime.length > 0) &&
+          questionnaire.gender.length > 0
+        )
       case 'situation':
         return questionnaire.situation.trim().length >= 5
       case 'emotion':
@@ -87,6 +96,9 @@ export function QuestionnairePage() {
         profile: {
           name: questionnaire.name,
           birth_date: questionnaire.birthDate,
+          birth_time: questionnaire.birthTimeUnknown ? undefined : questionnaire.birthTime,
+          birth_city: questionnaire.birthCity,
+          gender: questionnaire.gender,
           zodiac_sign: questionnaire.zodiacSign,
         },
       })
@@ -110,7 +122,7 @@ export function QuestionnairePage() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg flex flex-col px-6 pt-20 pb-8">
+    <div className="page-shell flex flex-col px-4 sm:px-6 overflow-x-hidden">
       <div className="flex gap-2 mb-8">
         {STEPS.map((_, i) => (
           <div
@@ -125,9 +137,9 @@ export function QuestionnairePage() {
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
-          initial={{ opacity: 0, x: 50 }}
+          initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
+          exit={{ opacity: 0, x: -24 }}
           transition={{ duration: 0.3 }}
           className="flex-1 flex flex-col"
         >
@@ -150,7 +162,7 @@ export function QuestionnairePage() {
           {step === 'birthDate' && (
             <>
               <h2 className="text-2xl font-display font-bold mb-2">Дата рождения</h2>
-              <p className="text-white/50 mb-6">Для точного расклада</p>
+              <p className="text-white/50 mb-6">Для точного расклада и портрета</p>
               <input
                 type="date"
                 value={questionnaire.birthDate}
@@ -173,6 +185,70 @@ export function QuestionnairePage() {
                   ✨ {questionnaire.zodiacSign}
                 </motion.p>
               )}
+            </>
+          )}
+
+          {step === 'birthDetails' && (
+            <>
+              <h2 className="text-2xl font-display font-bold mb-2">Данные рождения</h2>
+              <p className="text-white/50 mb-6">Как на натальной карте — для вашего портрета</p>
+
+              <label className="block text-white/60 text-sm mb-2">Время рождения</label>
+              <input
+                type="time"
+                value={questionnaire.birthTime}
+                disabled={questionnaire.birthTimeUnknown}
+                onChange={(e) => updateQuestionnaire({ birthTime: e.target.value })}
+                className="w-full px-4 py-4 glass rounded-2xl text-white text-lg mb-3
+                           focus:outline-none focus:ring-2 focus:ring-tarot-gold/50
+                           disabled:opacity-40"
+              />
+              <label className="flex items-center gap-3 mb-6 text-white/70">
+                <input
+                  type="checkbox"
+                  checked={questionnaire.birthTimeUnknown}
+                  onChange={(e) =>
+                    updateQuestionnaire({
+                      birthTimeUnknown: e.target.checked,
+                      birthTime: e.target.checked ? '' : questionnaire.birthTime,
+                    })
+                  }
+                  className="w-5 h-5 accent-tarot-gold"
+                />
+                Не знаю точное время
+              </label>
+
+              <label className="block text-white/60 text-sm mb-2">Город рождения</label>
+              <input
+                type="text"
+                value={questionnaire.birthCity}
+                onChange={(e) => updateQuestionnaire({ birthCity: e.target.value })}
+                placeholder="Например: Москва"
+                className="w-full px-4 py-4 glass rounded-2xl text-white text-lg mb-6
+                           placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-tarot-gold/50"
+              />
+
+              <p className="text-white/60 text-sm mb-3">Пол</p>
+              <div className="grid grid-cols-2 gap-3">
+                {GENDERS.map((g) => (
+                  <motion.button
+                    key={g.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      haptic('light')
+                      updateQuestionnaire({ gender: g.id })
+                    }}
+                    className={`p-4 rounded-2xl text-left transition-all ${
+                      questionnaire.gender === g.id
+                        ? 'bg-tarot-gold/20 border-2 border-tarot-gold'
+                        : 'glass border-2 border-transparent'
+                    }`}
+                  >
+                    <span className="text-2xl block mb-1">{g.emoji}</span>
+                    <span className="text-white">{g.label}</span>
+                  </motion.button>
+                ))}
+              </div>
             </>
           )}
 

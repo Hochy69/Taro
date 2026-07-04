@@ -10,10 +10,18 @@ export type AppScreen =
   | 'result'
   | 'history'
   | 'subscription'
+  | 'cardOfDay'
+  | 'portrait'
+  | 'natalChart'
+  | 'compatibility'
 
 interface QuestionnaireData {
   name: string
   birthDate: string
+  birthTime: string
+  birthTimeUnknown: boolean
+  birthCity: string
+  gender: string
   zodiacSign: string
   situation: string
   emotion: string
@@ -46,6 +54,10 @@ interface AppState {
 const initialQuestionnaire: QuestionnaireData = {
   name: '',
   birthDate: '',
+  birthTime: '',
+  birthTimeUnknown: false,
+  birthCity: '',
+  gender: '',
   zodiacSign: '',
   situation: '',
   emotion: '',

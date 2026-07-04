@@ -1,7 +1,7 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.infrastructure.celery_app import celery_app
@@ -45,7 +45,6 @@ def check_subscription_notifications():
 
 async def _check_subscription_notifications():
     now = datetime.now(timezone.utc)
-    three_days = now + timedelta(days=3)
 
     async with async_session() as session:
         result = await session.execute(
@@ -83,7 +82,8 @@ async def _check_subscription_notifications():
                 )
                 ntype = NotificationType.SUBSCRIPTION_EXPIRED
                 sub.status = SubscriptionStatus.EXPIRED
-                user.is_premium = False
+                if not user.is_admin:
+                    user.is_premium = False
             else:
                 continue
 
@@ -96,6 +96,73 @@ async def _check_subscription_notifications():
                 sent_at=now if sent else None,
             )
             session.add(notification)
+
+        await session.commit()
+
+
+@celery_app.task(name="app.infrastructure.tasks.send_daily_card_push")
+def send_daily_card_push():
+    run_async(_send_daily_card_push())
+
+
+async def _send_daily_card_push():
+    from app.application.services.card_of_day_service import get_card_of_day
+    from app.core.config import settings
+
+    now = datetime.now(timezone.utc)
+    today = date.today()
+    webapp = settings.telegram_webapp_url.rstrip("/")
+    card_url = f"{webapp}/card-of-day"
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(User)
+            .options(selectinload(User.profile))
+            .where(
+                User.is_blocked == False,
+                User.daily_card_push == True,
+                User.terms_accepted_at.isnot(None),
+            )
+        )
+        users = result.scalars().all()
+
+        for user in users:
+            already = await session.execute(
+                select(Notification.id).where(
+                    Notification.user_id == user.id,
+                    Notification.notification_type == NotificationType.CARD_OF_DAY,
+                    func.date(Notification.created_at) == today,
+                )
+            )
+            if already.scalar_one_or_none():
+                continue
+
+            name = user.profile.name if user.profile and user.profile.name else (user.first_name or "друг")
+            zodiac = user.profile.zodiac_sign if user.profile else None
+            try:
+                data = await get_card_of_day(session, user.id, name, zodiac, today)
+            except Exception:
+                continue
+
+            rev = " (перевёрнутая)" if data["card"]["is_reversed"] else ""
+            spread_url = f"{webapp}/"
+            msg = (
+                f"🃏 <b>Карта дня — {data['card']['name']}</b>{rev}\n\n"
+                f"{data['meaning']}\n\n"
+                f"💫 Карты намекают — хотите уточнить расклад?\n\n"
+                f"👉 <a href=\"{card_url}\">Открыть карту</a> · "
+                f"<a href=\"{spread_url}\">Сделать расклад</a>"
+            )
+            sent = await _send_telegram_message(user.telegram_id, msg)
+            session.add(
+                Notification(
+                    user_id=user.id,
+                    notification_type=NotificationType.CARD_OF_DAY,
+                    message=msg,
+                    is_sent=sent,
+                    sent_at=now if sent else None,
+                )
+            )
 
         await session.commit()
 

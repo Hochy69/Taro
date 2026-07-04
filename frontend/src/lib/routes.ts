@@ -9,6 +9,10 @@ export const ROUTES: Record<AppScreen, string> = {
   result: '/reading',
   history: '/history',
   subscription: '/subscription',
+  cardOfDay: '/card-of-day',
+  portrait: '/portrait',
+  natalChart: '/natal-chart',
+  compatibility: '/compatibility',
 }
 
 export const PATH_TO_SCREEN: Record<string, AppScreen> = {
@@ -19,4 +23,8 @@ export const PATH_TO_SCREEN: Record<string, AppScreen> = {
   '/reading': 'reading',
   '/history': 'history',
   '/subscription': 'subscription',
+  '/card-of-day': 'cardOfDay',
+  '/portrait': 'portrait',
+  '/natal-chart': 'natalChart',
+  '/compatibility': 'compatibility',
 }

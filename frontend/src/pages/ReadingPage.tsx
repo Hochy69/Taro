@@ -42,7 +42,7 @@ export function ReadingPage() {
   const [attempt, setAttempt] = useState(0)
   const [shareBusy, setShareBusy] = useState(false)
   const { data: pricing } = useQuery({ queryKey: ['pricing'], queryFn: api.getPricing })
-  const singleSpreadPrice = pricing?.single_spread ?? 150
+  const singleSpreadPrice = pricing?.single_spread ?? 99
 
   useEffect(() => {
     if (!currentSpread) {
@@ -147,7 +147,7 @@ export function ReadingPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg px-4 pt-20 pb-32">
+    <div className="page-shell pb-32">
       <motion.h1
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -160,7 +160,7 @@ export function ReadingPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center gap-3 mb-8 max-w-lg mx-auto"
+          className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8 max-w-lg mx-auto w-full min-w-0 px-1"
         >
           {currentSpread.cards.map((card) => (
             <TarotCardVisual
@@ -189,14 +189,14 @@ export function ReadingPage() {
               <h3 className="font-semibold text-tarot-gold mb-2 flex items-center gap-2">
                 <span>{section.icon}</span> {section.title}
               </h3>
-              <p className="text-white/80 leading-relaxed">{section.text}</p>
+              <p className="text-white/80 leading-relaxed break-words">{section.text}</p>
             </motion.div>
           )
         ))}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-tarot-dark via-tarot-dark/95 to-transparent">
-        <div className="max-w-lg mx-auto space-y-2">
+      <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-tarot-dark via-tarot-dark/95 to-transparent max-w-full overflow-hidden">
+        <div className="max-w-lg mx-auto space-y-2 w-full min-w-0">
           {isPremium ? (
             <>
               <Button onClick={() => goTo('history')}>История</Button>

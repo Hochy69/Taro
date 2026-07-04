@@ -16,7 +16,7 @@ export function GlassCard({ children, className = '', onClick, delay = 0 }: Glas
       transition={{ delay, duration: 0.4 }}
       whileTap={onClick ? { scale: 0.97 } : undefined}
       onClick={onClick}
-      className={`glass-card ${onClick ? 'cursor-pointer active:shadow-purple-500/30' : ''} ${className}`}
+      className={`glass-card min-w-0 overflow-hidden break-words ${onClick ? 'cursor-pointer active:shadow-purple-500/30' : ''} ${className}`}
     >
       {children}
     </motion.div>

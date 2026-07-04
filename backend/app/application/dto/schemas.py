@@ -18,6 +18,9 @@ class TelegramAuthResponse(BaseModel):
 class ProfileUpdate(BaseModel):
     name: str | None = None
     birth_date: date | None = None
+    birth_time: str | None = None
+    birth_city: str | None = None
+    gender: str | None = None
     zodiac_sign: str | None = None
 
 
@@ -55,6 +58,14 @@ class ReferralResponse(BaseModel):
     link: str
     invites_count: int
     bonus_earned: int
+    milestones: list["ReferralMilestoneResponse"] = []
+    next_milestone: "ReferralMilestoneResponse | None" = None
+
+
+class ReferralMilestoneResponse(BaseModel):
+    invites_required: int
+    reward: str
+    reached: bool
 
 
 class ReferralPendingRequest(BaseModel):
@@ -126,13 +137,29 @@ class LimitsResponse(BaseModel):
     daily_limit: int
     is_premium: bool
     bonus_spreads: int
+    compatibility_credits: int = 0
     period_days: int = 1
     next_available_at: str | None = None
+    completed_spreads: int = 0
+    first_paid_discount_eligible: bool = False
+    first_paid_discounted_price: int | None = None
+    first_paid_discount_percent: int = 0
 
 
 class PaymentCreateRequest(BaseModel):
-    payment_type: str  # single_spread | subscription
+    payment_type: str  # single_spread | subscription | compatibility | spread_pack_3 | spread_pack_5 | love_bundle
     plan: str | None = None  # month_1 | month_3 | month_6
+    promo_code: str | None = None
+
+
+class PromoValidateRequest(BaseModel):
+    code: str
+
+
+class PromoValidateResponse(BaseModel):
+    code: str
+    discount_percent: int
+    uses_left: int | None = None
 
 
 class PaymentResponse(BaseModel):
@@ -142,6 +169,10 @@ class PaymentResponse(BaseModel):
     status: str
     plan: str | None = None
     invoice_link: str | None = None
+    original_stars_amount: int | None = None
+    discount_percent: int | None = None
+    promo_code: str | None = None
+    free: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -160,9 +191,29 @@ class SubscriptionPlanResponse(BaseModel):
     features: list[str]
 
 
+class SpreadPackResponse(BaseModel):
+    pack: str
+    stars: int
+    spreads: int
+    savings_percent: int
+    label: str
+
+
+class LoveBundleResponse(BaseModel):
+    stars: int
+    original_stars: int
+    savings_percent: int
+    description: str
+
+
 class PricingResponse(BaseModel):
     single_spread: int
+    compatibility: int
     plans: list[SubscriptionPlanResponse]
+    spread_packs: list[SpreadPackResponse] = []
+    love_bundle: LoveBundleResponse | None = None
+    first_paid_discount_percent: int = 0
+    subscription_per_day_stars: int | None = None
 
 
 class FavoriteRequest(BaseModel):
@@ -178,3 +229,118 @@ class HistoryItemResponse(BaseModel):
     conclusion: str | None
     created_at: str
     is_favorite: bool = False
+
+
+class CardOfDayCardResponse(BaseModel):
+    id: int
+    slug: str
+    name: str
+    is_reversed: bool
+    image_url: str | None = None
+
+
+class CardOfDayResponse(BaseModel):
+    date: str
+    card: CardOfDayCardResponse
+    meaning: str
+    advice: str
+    conclusion: str
+    text: str
+
+
+class LunarBirthResponse(BaseModel):
+    lunar_day: str
+    title: str
+    meaning: str
+    advice: str
+
+
+class ZodiacPortraitResponse(BaseModel):
+    zodiac_sign: str
+    emoji: str
+    summary: str
+    essence: str
+    strengths: str
+    shadow: str
+    love: str
+    career: str
+    advice: str
+    text: str
+    lunar: LunarBirthResponse | None = None
+
+
+class PlanetPositionResponse(BaseModel):
+    key: str
+    name: str
+    symbol: str
+    sign: str
+    sign_emoji: str
+    degree: float
+    longitude: float
+    house: int | None = None
+    interpretation: str
+    wheel_angle: float
+
+
+class HousePositionResponse(BaseModel):
+    house: int
+    sign: str
+    sign_emoji: str
+    degree: float
+
+
+class AspectResponse(BaseModel):
+    planet_a: str
+    planet_b: str
+    aspect: str
+    angle: float
+    description: str
+
+
+class NatalChartResponse(BaseModel):
+    birth_date: str
+    birth_time: str | None = None
+    birth_city: str | None = None
+    time_unknown: bool = False
+    ascendant: str | None = None
+    ascendant_emoji: str | None = None
+    ascendant_degree: float | None = None
+    ascendant_longitude: float | None = None
+    summary: str
+    planets: list[PlanetPositionResponse]
+    houses: list[HousePositionResponse]
+    aspects: list[AspectResponse]
+    text: str
+
+
+class PartnerBirthData(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    birth_date: date
+    birth_time: str | None = None
+    birth_city: str | None = None
+    gender: str | None = None
+
+
+class CompatibilityResponse(BaseModel):
+    partner_name: str
+    score: int
+    summary: str
+    user_sun_sign: str
+    partner_sun_sign: str
+    user_moon_sign: str
+    partner_moon_sign: str
+    sun_match: str
+    moon_match: str | None = None
+    love: str
+    friendship: str
+    challenges: str
+    advice: str
+    text: str
+
+
+class UserPreferencesUpdate(BaseModel):
+    daily_card_push: bool | None = None
+
+
+class UserPreferencesResponse(BaseModel):
+    daily_card_push: bool
