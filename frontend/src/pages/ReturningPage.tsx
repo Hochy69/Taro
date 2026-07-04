@@ -35,8 +35,22 @@ export function ReturningPage() {
     }
   }
 
+  const refillQuestionnaire = () => {
+    haptic('light')
+    resetFlow()
+    if (lastCategory) {
+      const found = categories?.find((c) => c.slug === lastCategory)
+      setCategory(
+        found ?? { id: 0, slug: lastCategory, name: categoryName, emoji: '🔮' },
+      )
+      goTo('questionnaire')
+      return
+    }
+    goTo('welcome')
+  }
+
   return (
-    <div className="min-h-screen gradient-bg flex flex-col items-center justify-center px-6">
+    <div className="page-shell flex flex-col items-center justify-center min-h-screen">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -109,11 +123,7 @@ export function ReturningPage() {
             </Button>
             <Button
               variant="secondary"
-              onClick={() => {
-                haptic('light')
-                resetFlow()
-                goTo('welcome')
-              }}
+              onClick={refillQuestionnaire}
             >
               Заполнить анкету заново
             </Button>

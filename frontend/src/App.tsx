@@ -124,9 +124,10 @@ function SessionBootstrap() {
     // Only redirect to the landing screen if the user has not navigated away
     // during the async bootstrap (prevents a late auth response from kicking
     // the user back to the main menu).
-    const landing = (screen: 'welcome' | 'returning') => {
-      if (window.location.pathname === ROUTES.welcome) {
-        goTo(screen, true)
+    const landing = (isReturningUser: boolean) => {
+      const path = window.location.pathname
+      if (path === ROUTES.welcome || path === '/') {
+        goTo(isReturningUser ? 'returning' : 'welcome', true)
       }
     }
 
@@ -154,7 +155,7 @@ function SessionBootstrap() {
             auth.user.terms_accepted,
           )
           await afterAuth()
-          landing('welcome')
+          landing(auth.is_returning)
           return
         }
 
@@ -192,7 +193,7 @@ function SessionBootstrap() {
           auth.user.terms_accepted,
         )
         await afterAuth()
-        landing('welcome')
+        landing(auth.is_returning)
       } catch (e) {
         console.warn('Session bootstrap failed:', e)
         if (tg?.initData) {
@@ -200,7 +201,7 @@ function SessionBootstrap() {
             'Не удалось подключиться к серверу. Закройте мини-приложение, отправьте боту /start и нажмите кнопку снова.',
           )
         } else {
-          landing('welcome')
+          landing(false)
         }
       } finally {
         setLoading(false)

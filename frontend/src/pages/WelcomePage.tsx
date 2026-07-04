@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { useAppStore } from '@/store/appStore'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
-import { GlassCard } from '@/components/ui'
+import { GlassCard, Button } from '@/components/ui'
 import { TarotCardVisual } from '@/components/tarot/TarotCardVisual'
 import { haptic } from '@/lib/telegram'
 import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
@@ -21,7 +21,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 
 export function WelcomePage() {
   const { goTo } = useAppNavigation()
-  const { setCategory, isReturning, lastCategory } = useAppStore()
+  const { setCategory, isReturning, lastCategory, resetFlow } = useAppStore()
   const queryClient = useQueryClient()
   const [buyingCompat, setBuyingCompat] = useState(false)
   const { data: categories, isLoading } = useQuery({
@@ -85,6 +85,29 @@ export function WelcomePage() {
       ? `${compatCredits} проверок`
       : `${compatDisplayPrice} ⭐`
 
+  const handleResetQuestionnaire = () => {
+    haptic('medium')
+    resetFlow()
+    if (isReturning && lastCategory) {
+      const found = categories?.find((c) => c.slug === lastCategory)
+      setCategory(
+        found ?? {
+          id: 0,
+          slug: lastCategory,
+          name: lastTopic || lastCategory,
+          emoji: '🔮',
+        },
+      )
+      goTo('questionnaire')
+      return
+    }
+    if (isReturning) {
+      goTo('returning')
+      return
+    }
+    goTo('welcome')
+  }
+
   return (
     <div className="page-shell pb-24">
       <motion.div
@@ -107,6 +130,16 @@ export function WelcomePage() {
             ? <>Последняя тема: <span className="text-tarot-gold">{lastTopic}</span></>
             : 'Выберите сферу жизни, которая волнует вас сейчас'}
         </p>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md mx-auto mb-6"
+      >
+        <Button variant="secondary" onClick={handleResetQuestionnaire}>
+          📝 Заполнить анкету заново
+        </Button>
       </motion.div>
 
       {cardOfDay && (

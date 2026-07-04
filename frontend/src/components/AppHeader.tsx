@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PATH_TO_SCREEN } from '@/lib/routes'
-import type { AppScreen } from '@/store/appStore'
+import { useAppStore, type AppScreen } from '@/store/appStore'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
 import { haptic } from '@/lib/telegram'
 
@@ -27,6 +27,7 @@ const MENU_ITEMS: { id: string; screen: AppScreen; label: string; icon: string }
   { id: 'portrait', screen: 'portrait', label: 'Мой портрет', icon: '✨' },
   { id: 'natal', screen: 'natalChart', label: 'Натальная карта', icon: '🌌' },
   { id: 'compat', screen: 'compatibility', label: 'Совместимость', icon: '💕' },
+  { id: 'returning', screen: 'returning', label: 'Меню возвращения', icon: '✨' },
   { id: 'history', screen: 'history', label: 'История раскладов', icon: '📜' },
   { id: 'referral', screen: 'subscription', label: 'Пригласить друга', icon: '🎁' },
   { id: 'premium', screen: 'subscription', label: 'Premium подписка', icon: '⭐️' },
@@ -37,6 +38,7 @@ export function AppHeader() {
   const location = useLocation()
   const navigate = useNavigate()
   const { goTo } = useAppNavigation()
+  const resetFlow = useAppStore((s) => s.resetFlow)
 
   const screen: AppScreen = PATH_TO_SCREEN[location.pathname] ?? 'welcome'
   const isEntry = screen === 'welcome' || screen === 'returning'
@@ -74,6 +76,13 @@ export function AppHeader() {
     haptic('light')
     setOpen(false)
     goTo(target)
+  }
+
+  const resetQuestionnaire = () => {
+    haptic('light')
+    setOpen(false)
+    resetFlow()
+    goTo('returning')
   }
 
   return (
@@ -126,7 +135,7 @@ export function AppHeader() {
             />
             <motion.aside
               className="fixed top-0 left-0 z-50 h-full w-72 max-w-[80%] bg-tarot-dark
-                         border-r border-white/10 p-6 flex flex-col"
+                         border-r border-white/10 p-6 flex flex-col overflow-hidden"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
@@ -143,7 +152,7 @@ export function AppHeader() {
                 </button>
               </div>
 
-              <nav className="space-y-1">
+              <nav className="space-y-1 flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
                 {MENU_ITEMS.map((item) => (
                   <button
                     key={item.id}
@@ -161,7 +170,18 @@ export function AppHeader() {
                 ))}
               </nav>
 
-              <p className="mt-auto text-xs text-white/30">Мир Таро • v1.0</p>
+              <button
+                type="button"
+                onClick={resetQuestionnaire}
+                className="mt-3 shrink-0 w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left
+                           bg-tarot-gold/10 border border-tarot-gold/30 text-tarot-gold
+                           hover:bg-tarot-gold/20 transition active:scale-[0.98]"
+              >
+                <span className="text-xl">📝</span>
+                <span className="font-medium">Заполнить анкету заново</span>
+              </button>
+
+              <p className="mt-3 shrink-0 text-xs text-white/30">Мир Таро • v1.0</p>
             </motion.aside>
           </>
         )}
