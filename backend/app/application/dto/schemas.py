@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     first_name: str | None
     username: str | None
     is_premium: bool
+    is_admin: bool = False
     terms_accepted: bool = False
     profile: ProfileUpdate | None = None
 
@@ -136,6 +137,7 @@ class LimitsResponse(BaseModel):
     used_today: int
     daily_limit: int
     is_premium: bool
+    is_admin: bool = False
     bonus_spreads: int
     compatibility_credits: int = 0
     period_days: int = 1

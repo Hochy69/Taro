@@ -33,7 +33,7 @@ export function CompatibilityPage() {
   const promoPercent = getStoredPromoPercent()
   const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
   const compatCredits = limits?.compatibility_credits ?? 0
-  const isPremium = limits?.is_premium ?? false
+  const isPremium = Boolean(limits?.is_premium || limits?.is_admin)
   const hasCompatAccess = isPremium || compatCredits > 0
 
   const mutation = useMutation({

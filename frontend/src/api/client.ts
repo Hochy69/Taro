@@ -104,6 +104,7 @@ export interface AuthResponse {
     telegram_id: number
     first_name: string | null
     is_premium: boolean
+    is_admin?: boolean
     terms_accepted: boolean
     profile: UserProfile | null
   }
@@ -146,6 +147,7 @@ export interface Limits {
   used_today: number
   daily_limit: number
   is_premium: boolean
+  is_admin?: boolean
   bonus_spreads: number
   compatibility_credits: number
   period_days: number

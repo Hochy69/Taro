@@ -145,6 +145,8 @@ async def auth_dev(db: DbSession):
 
 
 async def _user_is_premium(db: DbSession, user: User) -> bool:
+    if user.is_admin:
+        return True
     return await SpreadService(db).is_premium(user.id)
 
 
@@ -163,6 +165,7 @@ async def _build_auth_response(db: DbSession, user, token: str) -> TelegramAuthR
             first_name=user.first_name,
             username=user.username,
             is_premium=is_premium,
+            is_admin=user.is_admin,
             terms_accepted=user.terms_accepted_at is not None,
             profile=profile_data,
         ),
@@ -188,6 +191,7 @@ async def get_me(user: CurrentUser, db: DbSession):
         first_name=user.first_name,
         username=user.username,
         is_premium=is_premium,
+        is_admin=user.is_admin,
         terms_accepted=user.terms_accepted_at is not None,
         profile=_profile_to_dto(user.profile),
     )
@@ -327,6 +331,25 @@ async def get_limits(user: CurrentUser, db: DbSession):
     from datetime import time, timedelta
 
     service = SpreadService(db)
+
+    if user.is_admin:
+        completed = await count_completed_spreads(db, user.id)
+        return LimitsResponse(
+            can_spread=True,
+            used_today=0,
+            daily_limit=999999,
+            is_premium=True,
+            is_admin=True,
+            bonus_spreads=999999,
+            compatibility_credits=999999,
+            period_days=1,
+            next_available_at=None,
+            completed_spreads=completed,
+            first_paid_discount_eligible=False,
+            first_paid_discounted_price=None,
+            first_paid_discount_percent=0,
+        )
+
     can_spread, used, limit = await service.check_daily_limit(user)
     is_premium = await service.is_premium(user.id)
     bonus = user.limits.bonus_spreads if user.limits else 0
@@ -347,6 +370,7 @@ async def get_limits(user: CurrentUser, db: DbSession):
         used_today=used,
         daily_limit=limit,
         is_premium=is_premium,
+        is_admin=False,
         bonus_spreads=bonus,
         compatibility_credits=user.limits.compatibility_credits if user.limits else 0,
         period_days=period_days,

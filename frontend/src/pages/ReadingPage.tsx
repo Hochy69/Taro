@@ -42,7 +42,7 @@ export function ReadingPage() {
   const [shareBusy, setShareBusy] = useState(false)
   const { data: limits } = useQuery({ queryKey: ['limits'], queryFn: api.getLimits })
   const { data: pricing } = useQuery({ queryKey: ['pricing'], queryFn: api.getPricing })
-  const isPremiumUser = limits?.is_premium ?? false
+  const isPremiumUser = Boolean(limits?.is_premium || limits?.is_admin)
   const singleSpreadPrice = pricing?.single_spread ?? 99
 
   useEffect(() => {

@@ -46,14 +46,14 @@ export function WelcomePage() {
   const promoPercent = getStoredPromoPercent()
   const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
   const compatCredits = limits?.compatibility_credits ?? 0
-  const isPremium = limits?.is_premium ?? false
+  const isPremium = Boolean(limits?.is_premium || limits?.is_admin)
   const hasCompatAccess = isPremium || compatCredits > 0
   const lastTopic = lastCategory ? CATEGORY_NAMES[lastCategory] || lastCategory : null
 
   const handleSelect = (category: NonNullable<typeof categories>[0]) => {
     haptic('medium')
     setCategory(category)
-    if (limits && !limits.can_spread) {
+    if (limits && !limits.can_spread && !limits.is_admin) {
       goTo('subscription')
       return
     }

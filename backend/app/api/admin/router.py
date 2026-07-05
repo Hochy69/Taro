@@ -13,6 +13,7 @@ from app.infrastructure.database.models import (
     PaymentStatus,
     Profile,
     User,
+    UserLimit,
 )
 from app.infrastructure.database.session import get_db
 
@@ -29,7 +30,7 @@ async def grant_admin(body: AdminGrantRequest, db: AsyncSession = Depends(get_db
     """
     if body.internal_secret != settings.internal_api_secret:
         raise HTTPException(status_code=403, detail="forbidden")
-    if body.word.strip() != settings.admin_secret_word:
+    if body.word.strip().lower() != settings.admin_secret_word.strip().lower():
         raise HTTPException(status_code=403, detail="forbidden")
 
     result = await db.execute(select(User).where(User.telegram_id == body.telegram_id))
@@ -49,6 +50,16 @@ async def grant_admin(body: AdminGrantRequest, db: AsyncSession = Depends(get_db
     user.is_premium = True
     if user.terms_accepted_at is None:
         user.terms_accepted_at = datetime.now(timezone.utc)
+
+    limit_result = await db.execute(select(UserLimit).where(UserLimit.user_id == user.id))
+    limits = limit_result.scalar_one_or_none()
+    if not limits:
+        limits = UserLimit(user_id=user.id)
+        db.add(limits)
+    limits.bonus_spreads = 999999
+    limits.compatibility_credits = 999999
+    limits.daily_spreads_used = 0
+
     await db.flush()
 
     token = create_admin_token(user.id)

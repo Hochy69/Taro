@@ -168,21 +168,15 @@ async def cmd_premium(message: Message):
 
 
 @dp.message(Command("admin"))
-async def cmd_admin(message: Message):
-    """Hidden admin activation: `/admin <secret word>`.
-
-    Regular users never learn this exists: any call without the correct
-    secret word is silently ignored (no reply), just like any other
-    unrecognized message.
-    """
-    parts = (message.text or "").split(maxsplit=1)
-    word = parts[1].strip() if len(parts) > 1 else ""
+async def cmd_admin(message: Message, command: CommandObject):
+    """Hidden admin activation: `/admin <secret word>` (e.g. /admin TaroVlad)."""
+    word = (command.args or "").strip()
     if not word:
         return
 
     result = await _grant_admin_on_backend(message.from_user, word)
     if not result or not result.get("granted"):
-        # Wrong word — stay hidden, behave as if the command doesn't exist.
+        logging.debug("Admin grant rejected for telegram_id=%s", message.from_user.id)
         return
 
     admin_url = result.get("admin_url")
@@ -233,6 +227,12 @@ async def _grant_admin_on_backend(tg_user, word: str) -> dict | None:
             )
             if resp.status_code == 200:
                 return resp.json()
+            logging.warning(
+                "Admin grant failed for telegram_id=%s: HTTP %s %s",
+                tg_user.id,
+                resp.status_code,
+                resp.text[:200],
+            )
     except Exception as e:  # noqa: BLE001
         logging.warning("Failed to grant admin on backend: %s", e)
     return None
