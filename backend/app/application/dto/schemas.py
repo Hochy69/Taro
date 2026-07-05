@@ -183,6 +183,13 @@ class StarsConfirmRequest(BaseModel):
     secret: str
 
 
+class PreCheckoutValidateRequest(BaseModel):
+    payload: str
+    total_amount: int
+    currency: str
+    secret: str
+
+
 class SubscriptionPlanResponse(BaseModel):
     plan: str
     stars: int

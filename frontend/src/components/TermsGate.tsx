@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { api } from '@/api/client'
 import { useAppStore } from '@/store/appStore'
 import { setAuthMeta, loadAuthMeta } from '@/api/client'
+import { tryApplyPromoFromUrl } from '@/lib/applyPromoFromUrl'
 import { haptic } from '@/lib/telegram'
 
 const SECTIONS: { title: string; body: string[] }[] = [
@@ -74,6 +75,7 @@ export function TermsGate() {
         setAuthMeta({ ...meta, terms_accepted: true })
       }
       setTermsAccepted(true)
+      await tryApplyPromoFromUrl()
       haptic('success')
     } catch (e) {
       haptic('error')

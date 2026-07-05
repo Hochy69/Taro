@@ -35,13 +35,14 @@ export function ReadingPage() {
     currentSpread,
     aiResult,
     setAIResult,
-    isPremium,
   } = useAppStore()
   const { goTo } = useAppNavigation()
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [shareBusy, setShareBusy] = useState(false)
+  const { data: limits } = useQuery({ queryKey: ['limits'], queryFn: api.getLimits })
   const { data: pricing } = useQuery({ queryKey: ['pricing'], queryFn: api.getPricing })
+  const isPremiumUser = limits?.is_premium ?? false
   const singleSpreadPrice = pricing?.single_spread ?? 99
 
   useEffect(() => {
@@ -197,7 +198,7 @@ export function ReadingPage() {
 
       <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-tarot-dark via-tarot-dark/95 to-transparent max-w-full overflow-hidden">
         <div className="max-w-lg mx-auto space-y-2 w-full min-w-0">
-          {isPremium ? (
+          {isPremiumUser ? (
             <>
               <Button onClick={() => goTo('history')}>История</Button>
               <div className="grid grid-cols-2 gap-2">

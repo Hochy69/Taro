@@ -41,12 +41,21 @@ export function QuestionnairePage() {
   const isLast = questionnaireStep === STEPS.length - 1
 
   useEffect(() => {
-    if (
-      questionnaireStep === 0 &&
-      questionnaire.name.trim().length >= 2 &&
-      questionnaire.birthDate.length > 0
-    ) {
+    if (questionnaireStep !== 0) return
+
+    const hasName = questionnaire.name.trim().length >= 2
+    const hasBirthDate = questionnaire.birthDate.length > 0
+    const hasBirthDetails =
+      questionnaire.birthCity.trim().length >= 2 &&
+      questionnaire.gender.length > 0 &&
+      (questionnaire.birthTimeUnknown || questionnaire.birthTime.length > 0)
+
+    if (hasName && hasBirthDate && hasBirthDetails) {
       setQuestionnaireStep(3)
+    } else if (hasName && hasBirthDate) {
+      setQuestionnaireStep(2)
+    } else if (hasName) {
+      setQuestionnaireStep(1)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -19,6 +19,7 @@ _SCHEMA_PATCHES = [
     "ALTER TABLE limits ADD COLUMN IF NOT EXISTS compatibility_credits INTEGER DEFAULT 0",
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS original_stars_amount INTEGER",
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS promo_code_id INTEGER",
+    "ALTER TABLE spreads ADD COLUMN IF NOT EXISTS quota_from_bonus BOOLEAN",
 ]
 
 _ENUM_PATCHES = [

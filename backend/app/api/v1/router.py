@@ -24,6 +24,7 @@ from app.application.dto.schemas import (
     PricingResponse,
     ProfileUpdate,
     PromoValidateRequest,
+    PreCheckoutValidateRequest,
     PromoValidateResponse,
     ReferralPendingRequest,
     ReferralResponse,
@@ -63,6 +64,8 @@ from app.core.security import create_access_token
 from app.infrastructure.database.models import (
     Category,
     Favorite,
+    Payment,
+    PaymentStatus,
     PaymentType,
     Spread,
     SpreadCard,
@@ -90,13 +93,13 @@ def _profile_to_dto(profile) -> ProfileUpdate | None:
 @router.post("/auth/telegram", response_model=TelegramAuthResponse)
 async def auth_telegram(body: TelegramAuthRequest, db: DbSession):
     user, token = await authenticate_telegram_user(db, body.init_data)
-    return _build_auth_response(user, token)
+    return await _build_auth_response(db, user, token)
 
 
 @router.post("/auth/dev", response_model=TelegramAuthResponse)
 async def auth_dev(db: DbSession):
     """Auth for local dev and browser testing outside Telegram WebApp."""
-    if not settings.debug:
+    if settings.app_env != "development":
         raise HTTPException(status_code=404, detail="Not found")
 
     from sqlalchemy.exc import IntegrityError
@@ -138,15 +141,15 @@ async def auth_dev(db: DbSession):
             user = result.scalar_one()
 
     token = create_access_token({"sub": str(user.id)})
-    return _build_auth_response(user, token)
+    return await _build_auth_response(db, user, token)
 
 
-def _effective_premium(user: User) -> bool:
-    """Admins always have full premium access in the app."""
-    return user.is_premium or user.is_admin
+async def _user_is_premium(db: DbSession, user: User) -> bool:
+    return await SpreadService(db).is_premium(user.id)
 
 
-def _build_auth_response(user, token: str) -> TelegramAuthResponse:
+async def _build_auth_response(db: DbSession, user, token: str) -> TelegramAuthResponse:
+    is_premium = await _user_is_premium(db, user)
     is_returning = user.profile is not None and user.profile.name is not None
     last_category = user.profile.last_category_slug if user.profile else None
 
@@ -159,7 +162,7 @@ def _build_auth_response(user, token: str) -> TelegramAuthResponse:
             telegram_id=user.telegram_id,
             first_name=user.first_name,
             username=user.username,
-            is_premium=_effective_premium(user),
+            is_premium=is_premium,
             terms_accepted=user.terms_accepted_at is not None,
             profile=profile_data,
         ),
@@ -177,13 +180,14 @@ async def get_categories(db: DbSession):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(user: CurrentUser):
+async def get_me(user: CurrentUser, db: DbSession):
+    is_premium = await _user_is_premium(db, user)
     return UserResponse(
         id=user.id,
         telegram_id=user.telegram_id,
         first_name=user.first_name,
         username=user.username,
-        is_premium=_effective_premium(user),
+        is_premium=is_premium,
         terms_accepted=user.terms_accepted_at is not None,
         profile=_profile_to_dto(user.profile),
     )
@@ -320,18 +324,20 @@ async def save_referral_pending(body: ReferralPendingRequest, db: DbSession):
 
 @router.get("/limits", response_model=LimitsResponse)
 async def get_limits(user: CurrentUser, db: DbSession):
-    from datetime import datetime, time, timedelta
+    from datetime import time, timedelta
 
     service = SpreadService(db)
     can_spread, used, limit = await service.check_daily_limit(user)
-    is_premium = await service._is_premium(user.id)
+    is_premium = await service.is_premium(user.id)
     bonus = user.limits.bonus_spreads if user.limits else 0
     period_days = 1 if is_premium else settings.free_spread_period_days
 
     next_available_at: str | None = None
     if not can_spread and user.limits is not None:
         next_date = user.limits.last_reset_date + timedelta(days=period_days)
-        next_available_at = datetime.combine(next_date, time.min).isoformat()
+        next_available_at = datetime.combine(
+            next_date, time.min, tzinfo=timezone.utc
+        ).isoformat()
 
     completed = await count_completed_spreads(db, user.id)
     first_paid_eligible = await is_first_paid_discount_eligible(db, user.id)
@@ -518,7 +524,7 @@ async def get_spread(spread_id: int, user: CurrentUser, db: DbSession):
 @router.get("/history", response_model=list[HistoryItemResponse])
 async def get_history(user: CurrentUser, db: DbSession):
     service = SpreadService(db)
-    is_premium = await service._is_premium(user.id)
+    is_premium = await service.is_premium(user.id)
     spreads = await service.get_spread_history(user.id, is_premium)
 
     fav_result = await db.execute(select(Favorite.spread_id).where(Favorite.user_id == user.id))
@@ -544,8 +550,15 @@ async def get_history(user: CurrentUser, db: DbSession):
 
 @router.post("/favorites")
 async def add_favorite(body: FavoriteRequest, user: CurrentUser, db: DbSession):
-    fav = Favorite(user_id=user.id, spread_id=body.spread_id)
-    db.add(fav)
+    existing = await db.execute(
+        select(Favorite.id).where(
+            Favorite.user_id == user.id,
+            Favorite.spread_id == body.spread_id,
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return {"status": "ok"}
+    db.add(Favorite(user_id=user.id, spread_id=body.spread_id))
     return {"status": "ok"}
 
 
@@ -745,6 +758,27 @@ async def confirm_stars_payment(body: StarsConfirmRequest, db: DbSession):
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     return {"status": "confirmed", "payment_id": payment.id}
+
+
+@router.post("/payments/telegram/pre-checkout")
+async def validate_pre_checkout(body: PreCheckoutValidateRequest, db: DbSession):
+    """Internal endpoint for bot pre_checkout_query validation."""
+    if body.secret != settings.internal_api_secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if body.currency != "XTR":
+        return {"ok": False, "error": "Invalid currency"}
+    try:
+        payment_id = int(body.payload)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "Invalid payload"}
+
+    result = await db.execute(select(Payment).where(Payment.id == payment_id))
+    payment = result.scalar_one_or_none()
+    if not payment or payment.status != PaymentStatus.PENDING:
+        return {"ok": False, "error": "Payment not found"}
+    if payment.stars_amount != body.total_amount:
+        return {"ok": False, "error": "Amount mismatch"}
+    return {"ok": True}
 
 
 @router.post("/payments/confirm")

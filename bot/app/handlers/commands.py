@@ -310,9 +310,46 @@ async def _confirm_payment_on_backend(payload: str | None, charge_id: str | None
         return False
 
 
+async def _validate_pre_checkout(payload: str | None, total_amount: int, currency: str) -> bool:
+    if not payload:
+        return False
+    import httpx
+
+    url = f"{settings.api_url.rstrip('/')}/api/v1/payments/telegram/pre-checkout"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                json={
+                    "payload": payload,
+                    "total_amount": total_amount,
+                    "currency": currency,
+                    "secret": settings.internal_api_secret,
+                },
+                timeout=10.0,
+            )
+            if resp.status_code != 200:
+                return False
+            return bool(resp.json().get("ok"))
+    except Exception as e:  # noqa: BLE001
+        logging.warning("Pre-checkout validation failed: %s", e)
+        return False
+
+
 @dp.pre_checkout_query()
 async def pre_checkout(query: PreCheckoutQuery):
-    await query.answer(ok=True)
+    ok = await _validate_pre_checkout(
+        query.invoice_payload,
+        query.total_amount,
+        query.currency,
+    )
+    if ok:
+        await query.answer(ok=True)
+    else:
+        await query.answer(
+            ok=False,
+            error_message="Платёж не найден или сумма не совпадает.",
+        )
 
 
 async def send_invoice(

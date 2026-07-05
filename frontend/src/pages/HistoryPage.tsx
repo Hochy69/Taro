@@ -52,8 +52,8 @@ export function HistoryPage() {
                     {item.conclusion || item.situation}
                   </p>
                   <div className="flex gap-2 mt-2">
-                    {item.cards.map((c) => (
-                      <span key={c} className="text-xs bg-white/10 px-2 py-1 rounded-lg">
+                    {item.cards.map((c, cardIndex) => (
+                      <span key={`${item.id}-${cardIndex}`} className="text-xs bg-white/10 px-2 py-1 rounded-lg">
                         {c}
                       </span>
                     ))}

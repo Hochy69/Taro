@@ -131,8 +131,10 @@ function SessionBootstrap() {
       }
     }
 
-    const afterAuth = async () => {
-      await tryApplyPromoFromUrl()
+    const afterAuth = async (termsAccepted: boolean) => {
+      if (termsAccepted) {
+        await tryApplyPromoFromUrl()
+      }
     }
 
     const bootstrap = async () => {
@@ -154,7 +156,7 @@ function SessionBootstrap() {
             auth.user.profile ?? null,
             auth.user.terms_accepted,
           )
-          await afterAuth()
+          await afterAuth(auth.user.terms_accepted)
           landing(auth.is_returning)
           return
         }
@@ -167,13 +169,13 @@ function SessionBootstrap() {
               setAuth,
               updateQuestionnaire,
               setTermsAccepted,
-              meta?.is_premium ?? me.is_premium,
+              me.is_premium,
               meta?.is_returning ?? false,
               meta?.last_category ?? null,
               me.profile ?? meta?.profile ?? null,
               me.terms_accepted,
             )
-            await afterAuth()
+            await afterAuth(me.terms_accepted)
             return
           } catch {
             clearAccessToken()
@@ -192,7 +194,7 @@ function SessionBootstrap() {
           auth.user.profile ?? null,
           auth.user.terms_accepted,
         )
-        await afterAuth()
+        await afterAuth(auth.user.terms_accepted)
         landing(auth.is_returning)
       } catch (e) {
         console.warn('Session bootstrap failed:', e)

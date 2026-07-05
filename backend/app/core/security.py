@@ -56,6 +56,16 @@ def verify_telegram_webapp_data(init_data: str, bot_token: str) -> dict[str, Any
     if not hmac.compare_digest(calculated, received_hash):
         return None
 
+    auth_date = parsed.get("auth_date")
+    if not auth_date:
+        return None
+    try:
+        age_seconds = datetime.now(timezone.utc).timestamp() - int(auth_date)
+    except (TypeError, ValueError):
+        return None
+    if age_seconds < 0 or age_seconds > 3600:
+        return None
+
     if "user" in parsed:
         parsed["user"] = json.loads(parsed["user"])
     return parsed

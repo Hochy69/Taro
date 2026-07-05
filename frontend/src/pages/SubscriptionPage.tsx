@@ -245,9 +245,8 @@ export function SubscriptionPage() {
       if (result === 'paid' || result === 'free') {
 
         if (type === 'subscription') {
-
-          setAuth(true, isReturning, lastCategory)
-
+          const me = await api.getMe()
+          setAuth(me.is_premium, isReturning, lastCategory)
         }
 
         queryClient.invalidateQueries({ queryKey: ['limits'] })

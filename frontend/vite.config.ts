@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       host: true,
-      allowedHosts: ['.tuna.am'],
+      allowedHosts: true,
       proxy: {
         '/api': {
           target: proxyTarget,

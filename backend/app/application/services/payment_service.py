@@ -175,8 +175,24 @@ class PaymentService:
         result = await self.session.execute(
             select(Payment).where(
                 Payment.user_id == user_id,
+                Payment.telegram_payment_id == telegram_payment_id,
+            )
+        )
+        payment = result.scalar_one_or_none()
+        if payment:
+            return payment
+
+        try:
+            payment_id = int(telegram_payment_id)
+        except (TypeError, ValueError):
+            return None
+
+        result = await self.session.execute(
+            select(Payment).where(
+                Payment.user_id == user_id,
                 Payment.status == PaymentStatus.PENDING,
-            ).order_by(Payment.created_at.desc())
+                Payment.id == payment_id,
+            )
         )
         payment = result.scalar_one_or_none()
         if not payment:

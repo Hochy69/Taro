@@ -3,6 +3,18 @@ import { api } from '@/api/client'
 import { getStoredPromoCode } from '@/lib/promo'
 import { haptic } from '@/lib/telegram'
 
+async function waitForPaymentActivation(): Promise<void> {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 750))
+    try {
+      await api.getLimits()
+      return
+    } catch {
+      // Backend may still be confirming the Stars payment.
+    }
+  }
+}
+
 export async function openStarsPayment(
   paymentType: string,
   options?: {
@@ -29,7 +41,9 @@ export async function openStarsPayment(
     tg.openInvoice!(payment.invoice_link!, (status: string) => {
       if (status === 'paid') {
         haptic('success')
-        options?.onPaid?.()
+        void waitForPaymentActivation().then(() => {
+          options?.onPaid?.()
+        })
         resolve('paid')
       } else if (status === 'failed') {
         haptic('error')

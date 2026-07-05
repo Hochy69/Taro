@@ -2,6 +2,7 @@ import random
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -103,6 +104,20 @@ class SpreadService:
         )
         return result.scalar_one_or_none() is not None
 
+    async def is_premium(self, user_id: int) -> bool:
+        return await self._is_premium(user_id)
+
+    async def _refund_spread_quota(self, user: User, spread: Spread) -> None:
+        if user.is_admin or spread.quota_from_bonus is None:
+            return
+        limit_record = await self._ensure_limit_record(user)
+        if spread.quota_from_bonus:
+            limit_record.bonus_spreads += 1
+        elif limit_record.daily_spreads_used > 0:
+            limit_record.daily_spreads_used -= 1
+        spread.quota_from_bonus = None
+        await self.session.flush()
+
     async def draw_cards(self, count: int = 3) -> list[TarotCard]:
         result = await self.session.execute(select(TarotCard))
         all_cards = list(result.scalars().all())
@@ -139,6 +154,7 @@ class SpreadService:
     ) -> Spread:
         limit_record = await self._ensure_limit_record(user)
         consume_from_bonus = False
+        charged_quota = False
 
         if not user.is_admin:
             is_premium = await self._is_premium(user.id)
@@ -185,12 +201,20 @@ class SpreadService:
                     profile.birth_lon = lon
                     profile.birth_timezone = tz
 
+        if not user.is_admin:
+            if consume_from_bonus:
+                limit_record.bonus_spreads -= 1
+            else:
+                limit_record.daily_spreads_used += 1
+            charged_quota = True
+
         spread = Spread(
             user_id=user.id,
             category_id=category.id,
             situation=situation,
             emotion=emotion,
             status=SpreadStatus.PENDING,
+            quota_from_bonus=consume_from_bonus if charged_quota else None,
         )
         self.session.add(spread)
         await self.session.flush()
@@ -207,12 +231,6 @@ class SpreadService:
                 order=i,
             )
             self.session.add(spread_card)
-
-        if not user.is_admin:
-            if consume_from_bonus:
-                limit_record.bonus_spreads -= 1
-            else:
-                limit_record.daily_spreads_used += 1
 
         self.session.add(
             AnalyticsEvent(event_type="spread_created", user_id=user.id, category_id=category.id)
@@ -243,51 +261,66 @@ class SpreadService:
         spread.status = SpreadStatus.GENERATING
         await self.session.flush()
 
-        profile = spread.user.profile
-        cards_data = []
-        for sc in sorted(spread.cards, key=lambda x: x.order):
-            meaning = await self.get_card_meaning(
-                sc.card_id, spread.category.slug, sc.position, sc.is_reversed
+        try:
+            profile = spread.user.profile
+            cards_data = []
+            for sc in sorted(spread.cards, key=lambda x: x.order):
+                meaning = await self.get_card_meaning(
+                    sc.card_id, spread.category.slug, sc.position, sc.is_reversed
+                )
+                cards_data.append({
+                    "position": {"past": "Прошлое", "present": "Настоящее", "future": "Будущее"}[sc.position],
+                    "name": sc.card.name,
+                    "is_reversed": sc.is_reversed,
+                    "meaning": meaning,
+                })
+
+            ai_response = await self.ai_service.generate_reading(
+                name=profile.name if profile else "Дорогой друг",
+                birth_date=profile.birth_date if profile else None,
+                zodiac_sign=profile.zodiac_sign if profile else None,
+                category=spread.category.name,
+                situation=spread.situation or "",
+                emotion=spread.emotion or "",
+                cards=cards_data,
+                category_slug=spread.category.slug,
             )
-            cards_data.append({
-                "position": {"past": "Прошлое", "present": "Настоящее", "future": "Будущее"}[sc.position],
-                "name": sc.card.name,
-                "is_reversed": sc.is_reversed,
-                "meaning": meaning,
-            })
 
-        ai_response = await self.ai_service.generate_reading(
-            name=profile.name if profile else "Дорогой друг",
-            birth_date=profile.birth_date if profile else None,
-            zodiac_sign=profile.zodiac_sign if profile else None,
-            category=spread.category.name,
-            situation=spread.situation or "",
-            emotion=spread.emotion or "",
-            cards=cards_data,
-            category_slug=spread.category.slug,
-        )
+            provider_name = "template" if settings.template_only else settings.ai_provider
+            model_name = "local" if settings.template_only else settings.ai_model
 
-        provider_name = "template" if settings.template_only else settings.ai_provider
-        model_name = "local" if settings.template_only else settings.ai_model
-
-        ai_result = AIResult(
-            spread_id=spread.id,
-            provider=provider_name,
-            model=model_name,
-            prompt_tokens=ai_response.prompt_tokens,
-            completion_tokens=ai_response.completion_tokens,
-            generation_time_ms=ai_response.generation_time_ms,
-            response_text=ai_response.text,
-            past_interpretation=ai_response.past,
-            present_interpretation=ai_response.present,
-            future_interpretation=ai_response.future,
-            advice=ai_response.advice,
-            conclusion=ai_response.conclusion,
-        )
-        spread.status = SpreadStatus.COMPLETED
-        self.session.add(ai_result)
-        await self.session.flush()
-        return ai_result
+            ai_result = AIResult(
+                spread_id=spread.id,
+                provider=provider_name,
+                model=model_name,
+                prompt_tokens=ai_response.prompt_tokens,
+                completion_tokens=ai_response.completion_tokens,
+                generation_time_ms=ai_response.generation_time_ms,
+                response_text=ai_response.text,
+                past_interpretation=ai_response.past,
+                present_interpretation=ai_response.present,
+                future_interpretation=ai_response.future,
+                advice=ai_response.advice,
+                conclusion=ai_response.conclusion,
+            )
+            spread.status = SpreadStatus.COMPLETED
+            self.session.add(ai_result)
+            await self.session.flush()
+            return ai_result
+        except IntegrityError:
+            await self.session.rollback()
+            existing = await self.session.execute(
+                select(AIResult).where(AIResult.spread_id == spread_id)
+            )
+            ai_result = existing.scalar_one_or_none()
+            if ai_result:
+                return ai_result
+            raise
+        except Exception:
+            spread.status = SpreadStatus.FAILED
+            await self._refund_spread_quota(spread.user, spread)
+            await self.session.flush()
+            raise
 
     async def get_spread_history(self, user_id: int, is_premium: bool) -> list[Spread]:
         query = (

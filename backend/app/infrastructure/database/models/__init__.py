@@ -207,6 +207,7 @@ class Spread(Base):
     situation: Mapped[str | None] = mapped_column(Text)
     emotion: Mapped[str | None] = mapped_column(String(50))
     status: Mapped[SpreadStatus] = mapped_column(Enum(SpreadStatus), default=SpreadStatus.PENDING)
+    quota_from_bonus: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="spreads")
