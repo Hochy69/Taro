@@ -39,6 +39,7 @@ interface AppState {
   currentSpread: Spread | null
   aiResult: AIResult | null
   questionnaireStep: number
+  skipQuestionnairePrefill: boolean
 
   setScreen: (screen: AppScreen) => void
   setAuth: (isPremium: boolean, isReturning: boolean, lastCategory: string | null) => void
@@ -49,6 +50,8 @@ interface AppState {
   setSpread: (spread: Spread) => void
   setAIResult: (result: AIResult) => void
   resetFlow: () => void
+  beginQuestionnaireRefill: () => Category | null
+  clearQuestionnairePrefill: () => void
 }
 
 const initialQuestionnaire: QuestionnaireData = {
@@ -75,6 +78,7 @@ export const useAppStore = create<AppState>((set) => ({
   currentSpread: null,
   aiResult: null,
   questionnaireStep: 0,
+  skipQuestionnairePrefill: false,
 
   setScreen: (screen) => set({ screen }),
   setAuth: (isPremium, isReturning, lastCategory) =>
@@ -93,5 +97,30 @@ export const useAppStore = create<AppState>((set) => ({
       currentSpread: null,
       aiResult: null,
       questionnaireStep: 0,
+      skipQuestionnairePrefill: false,
     }),
+  beginQuestionnaireRefill: () => {
+    let category: Category | null = null
+    set((s) => {
+      category = s.selectedCategory
+      if (!category && s.lastCategory) {
+        category = {
+          id: 0,
+          slug: s.lastCategory,
+          name: s.lastCategory,
+          emoji: '🔮',
+        }
+      }
+      return {
+        selectedCategory: category,
+        questionnaire: { ...initialQuestionnaire },
+        currentSpread: null,
+        aiResult: null,
+        questionnaireStep: 0,
+        skipQuestionnairePrefill: true,
+      }
+    })
+    return category
+  },
+  clearQuestionnairePrefill: () => set({ skipQuestionnairePrefill: false }),
 }))

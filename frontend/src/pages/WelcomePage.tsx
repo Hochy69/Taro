@@ -8,6 +8,7 @@ import { GlassCard, Button } from '@/components/ui'
 import { TarotCardVisual } from '@/components/tarot/TarotCardVisual'
 import { haptic } from '@/lib/telegram'
 import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
+import { useQuestionnaireRefill } from '@/hooks/useQuestionnaireRefill'
 import { openStarsPayment } from '@/lib/payments'
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -21,7 +22,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 
 export function WelcomePage() {
   const { goTo } = useAppNavigation()
-  const { setCategory, isReturning, lastCategory, resetFlow } = useAppStore()
+  const { setCategory, isReturning, lastCategory } = useAppStore()
   const queryClient = useQueryClient()
   const [buyingCompat, setBuyingCompat] = useState(false)
   const { data: categories, isLoading } = useQuery({
@@ -85,28 +86,7 @@ export function WelcomePage() {
       ? `${compatCredits} проверок`
       : `${compatDisplayPrice} ⭐`
 
-  const handleResetQuestionnaire = () => {
-    haptic('medium')
-    resetFlow()
-    if (isReturning && lastCategory) {
-      const found = categories?.find((c) => c.slug === lastCategory)
-      setCategory(
-        found ?? {
-          id: 0,
-          slug: lastCategory,
-          name: lastTopic || lastCategory,
-          emoji: '🔮',
-        },
-      )
-      goTo('questionnaire')
-      return
-    }
-    if (isReturning) {
-      goTo('returning')
-      return
-    }
-    goTo('welcome')
-  }
+  const refillQuestionnaire = useQuestionnaireRefill()
 
   return (
     <div className="page-shell pb-24">
@@ -137,7 +117,7 @@ export function WelcomePage() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md mx-auto mb-6"
       >
-        <Button variant="secondary" onClick={handleResetQuestionnaire}>
+        <Button variant="secondary" onClick={() => refillQuestionnaire(categories)}>
           📝 Заполнить анкету заново
         </Button>
       </motion.div>

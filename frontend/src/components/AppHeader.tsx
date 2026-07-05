@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { PATH_TO_SCREEN } from '@/lib/routes'
 import { useAppStore, type AppScreen } from '@/store/appStore'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
+import { useQuestionnaireRefill } from '@/hooks/useQuestionnaireRefill'
 import { haptic } from '@/lib/telegram'
 
 const TITLES: Record<AppScreen, string> = {
@@ -38,7 +39,7 @@ export function AppHeader() {
   const location = useLocation()
   const navigate = useNavigate()
   const { goTo } = useAppNavigation()
-  const resetFlow = useAppStore((s) => s.resetFlow)
+  const refillQuestionnaire = useQuestionnaireRefill()
 
   const screen: AppScreen = PATH_TO_SCREEN[location.pathname] ?? 'welcome'
   const isEntry = screen === 'welcome' || screen === 'returning'
@@ -78,11 +79,9 @@ export function AppHeader() {
     goTo(target)
   }
 
-  const resetQuestionnaire = () => {
-    haptic('light')
+  const handleQuestionnaireRefill = () => {
     setOpen(false)
-    resetFlow()
-    goTo('returning')
+    refillQuestionnaire()
   }
 
   return (
@@ -172,7 +171,7 @@ export function AppHeader() {
 
               <button
                 type="button"
-                onClick={resetQuestionnaire}
+                onClick={handleQuestionnaireRefill}
                 className="mt-3 shrink-0 w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left
                            bg-tarot-gold/10 border border-tarot-gold/30 text-tarot-gold
                            hover:bg-tarot-gold/20 transition active:scale-[0.98]"

@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { useAppStore } from '@/store/appStore'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
 import { Button, GlassCard } from '@/components/ui'
+import { useQuestionnaireRefill } from '@/hooks/useQuestionnaireRefill'
 import { haptic } from '@/lib/telegram'
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -16,15 +17,15 @@ const CATEGORY_NAMES: Record<string, string> = {
 }
 
 export function ReturningPage() {
-  const { lastCategory, resetFlow, setCategory } = useAppStore()
+  const { lastCategory, setCategory } = useAppStore()
   const { goTo } = useAppNavigation()
+  const refillQuestionnaire = useQuestionnaireRefill()
   const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: api.getCategories })
   const categoryName = lastCategory ? CATEGORY_NAMES[lastCategory] || lastCategory : 'Общий расклад'
 
   const continueTopic = () => {
     haptic('medium')
     if (lastCategory) {
-      // Restore the previously chosen category so the flow can complete.
       const found = categories?.find((c) => c.slug === lastCategory)
       setCategory(
         found ?? { id: 0, slug: lastCategory, name: categoryName, emoji: '🔮' },
@@ -33,20 +34,6 @@ export function ReturningPage() {
     } else {
       goTo('welcome')
     }
-  }
-
-  const refillQuestionnaire = () => {
-    haptic('light')
-    resetFlow()
-    if (lastCategory) {
-      const found = categories?.find((c) => c.slug === lastCategory)
-      setCategory(
-        found ?? { id: 0, slug: lastCategory, name: categoryName, emoji: '🔮' },
-      )
-      goTo('questionnaire')
-      return
-    }
-    goTo('welcome')
   }
 
   return (
@@ -123,7 +110,7 @@ export function ReturningPage() {
             </Button>
             <Button
               variant="secondary"
-              onClick={refillQuestionnaire}
+              onClick={() => refillQuestionnaire(categories)}
             >
               Заполнить анкету заново
             </Button>

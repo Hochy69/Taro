@@ -32,6 +32,8 @@ export function QuestionnairePage() {
     setQuestionnaireStep,
     selectedCategory,
     setSpread,
+    skipQuestionnairePrefill,
+    clearQuestionnairePrefill,
   } = useAppStore()
   const { goTo } = useAppNavigation()
   const [loading, setLoading] = useState(false)
@@ -41,6 +43,12 @@ export function QuestionnairePage() {
   const isLast = questionnaireStep === STEPS.length - 1
 
   useEffect(() => {
+    if (skipQuestionnairePrefill) {
+      setQuestionnaireStep(0)
+      clearQuestionnairePrefill()
+      return
+    }
+
     if (questionnaireStep !== 0) return
 
     const hasName = questionnaire.name.trim().length >= 2
@@ -58,7 +66,7 @@ export function QuestionnairePage() {
       setQuestionnaireStep(1)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [skipQuestionnairePrefill])
 
   const canProceed = () => {
     switch (step) {

@@ -148,7 +148,7 @@ export function ReadingPage() {
   }
 
   return (
-    <div className="page-shell pb-32">
+    <div className={`page-shell ${isPremiumUser ? 'pb-40' : 'pb-56'}`}>
       <motion.h1
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -194,10 +194,14 @@ export function ReadingPage() {
             </motion.div>
           )
         ))}
+        <div
+          className={isPremiumUser ? 'h-36' : 'h-52'}
+          aria-hidden
+        />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-tarot-dark via-tarot-dark/95 to-transparent max-w-full overflow-hidden">
-        <div className="max-w-lg mx-auto space-y-2 w-full min-w-0">
+      <div className="fixed bottom-0 left-0 right-0 z-30 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-tarot-dark via-tarot-dark/95 to-transparent max-w-full overflow-hidden pointer-events-none">
+        <div className="max-w-lg mx-auto space-y-2 w-full min-w-0 pointer-events-auto">
           {isPremiumUser ? (
             <>
               <Button onClick={() => goTo('history')}>История</Button>
