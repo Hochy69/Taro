@@ -64,6 +64,15 @@ class NotificationType(str, enum.Enum):
     INACTIVE_7D = "inactive_7d"
     INACTIVE_14D = "inactive_14d"
     CARD_OF_DAY = "card_of_day"
+    START_NO_WEBAPP = "start_no_webapp"
+    SPREAD_FIRST = "spread_first"
+    SPREAD_SECOND = "spread_second"
+    SPREAD_THIRD = "spread_third"
+    FREE_LIMIT_HIT = "free_limit_hit"
+    FREE_LIMIT_FOLLOWUP = "free_limit_followup"
+    COMPAT_VIEW_ABANDONED = "compat_view_abandoned"
+    COMPAT_PAID_UPSELL = "compat_paid_upsell"
+    WEEKLY_REFERRAL = "weekly_referral"
 
 
 class User(Base):

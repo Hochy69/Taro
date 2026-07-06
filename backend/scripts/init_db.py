@@ -26,6 +26,15 @@ _ENUM_PATCHES = [
     "ALTER TYPE paymenttype ADD VALUE IF NOT EXISTS 'spread_pack_3'",
     "ALTER TYPE paymenttype ADD VALUE IF NOT EXISTS 'spread_pack_5'",
     "ALTER TYPE paymenttype ADD VALUE IF NOT EXISTS 'love_bundle'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'start_no_webapp'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'spread_first'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'spread_second'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'spread_third'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'free_limit_hit'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'free_limit_followup'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'compat_view_abandoned'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'compat_paid_upsell'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'weekly_referral'",
 ]
 
 

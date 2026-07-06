@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import CurrentUser, DbSession, RequireTermsUser, authenticate_telegram_user
 from app.application.dto.schemas import (
     AcceptTermsResponse,
+    BotStartNotifyRequest,
     AIResultResponse,
     CardResponse,
     CardOfDayResponse,
@@ -44,6 +45,13 @@ from app.application.services.card_of_day_service import get_card_of_day
 from app.application.services.compatibility_service import build_compatibility
 from app.application.services.lunar_service import render_lunar_birth_text
 from app.application.services.natal_chart_service import build_natal_chart
+from app.application.services.marketing_push_service import (
+    on_compatibility_paid,
+    on_free_limit_blocked,
+    on_spread_interpreted,
+    schedule_compat_abandon_reminder,
+    schedule_start_reminder,
+)
 from app.application.services.marketing_service import (
     count_completed_spreads,
     first_paid_discounted_price,
@@ -327,6 +335,27 @@ async def save_referral_pending(body: ReferralPendingRequest, db: DbSession):
     return {"ok": True}
 
 
+@router.post("/notifications/bot-start")
+async def notify_bot_start(body: BotStartNotifyRequest):
+    """Schedule a reminder if the user does not open the WebApp (internal)."""
+    if body.secret != settings.internal_api_secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    schedule_start_reminder(body.telegram_id)
+    return {"ok": True}
+
+
+@router.post("/notifications/compat-viewed")
+async def notify_compat_viewed(user: RequireTermsUser):
+    """Schedule an abandon-cart reminder for unpaid compatibility."""
+    if user.is_admin or user.is_premium:
+        return {"ok": True}
+    limits = user.limits
+    if limits and limits.compatibility_credits > 0:
+        return {"ok": True}
+    schedule_compat_abandon_reminder(user.id)
+    return {"ok": True}
+
+
 @router.get("/limits", response_model=LimitsResponse)
 async def get_limits(user: CurrentUser, db: DbSession):
     from datetime import time, timedelta
@@ -475,6 +504,8 @@ async def create_spread(body: CreateSpreadRequest, user: RequireTermsUser, db: D
 
         return _spread_to_response(spread)
     except PermissionError:
+        await on_free_limit_blocked(db, user)
+        await db.commit()
         raise HTTPException(
             status_code=403,
             detail=(
@@ -498,6 +529,8 @@ async def interpret_spread(spread_id: int, user: RequireTermsUser, db: DbSession
     service = SpreadService(db)
     try:
         ai_result = await service.generate_interpretation(spread_id)
+        await on_spread_interpreted(db, spread_id)
+        await db.commit()
         return AIResultResponse(
             response_text=ai_result.response_text,
             past=ai_result.past_interpretation,
@@ -797,6 +830,8 @@ async def confirm_stars_payment(body: StarsConfirmRequest, db: DbSession):
     payment = await service.confirm_payment_by_id(payment_id, body.telegram_payment_charge_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
+    await on_compatibility_paid(db, payment)
+    await db.commit()
     return {"status": "confirmed", "payment_id": payment.id}
 
 

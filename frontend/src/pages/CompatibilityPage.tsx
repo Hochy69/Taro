@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type PartnerBirthData } from '@/api/client'
@@ -42,6 +42,11 @@ export function CompatibilityPage() {
   const compatCredits = limits?.compatibility_credits ?? 0
   const isPremium = Boolean(limits?.is_premium || limits?.is_admin)
   const hasCompatAccess = isPremium || compatCredits > 0
+
+  useEffect(() => {
+    if (hasCompatAccess || !limits) return
+    api.notifyCompatViewed().catch(() => {})
+  }, [hasCompatAccess, limits])
 
   const mutation = useMutation({
     mutationFn: api.getCompatibility,

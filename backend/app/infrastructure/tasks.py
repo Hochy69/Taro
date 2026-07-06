@@ -9,6 +9,9 @@ from app.infrastructure.celery_app import celery_app
 from app.infrastructure.database.models import (
     Notification,
     NotificationType,
+    Payment,
+    PaymentStatus,
+    PaymentType,
     Subscription,
     SubscriptionStatus,
     User,
@@ -171,25 +174,26 @@ async def _send_daily_card_push():
                 continue
 
             rev = " (перевёрнутая)" if data["card"]["is_reversed"] else ""
-            spread_url = f"{webapp}/"
+            card_url = f"{webapp}/card-of-day"
+            compat_url = f"{webapp}/compatibility"
             card_name = escape_telegram_html(data["card"]["name"])
             meaning = escape_telegram_html(data["meaning"])
-            msg = (
-                f"🃏 <b>Карта дня — {card_name}</b>{rev}\n\n"
-                f"{meaning}\n\n"
-                f"💫 Карты намекают — хотите уточнить расклад?\n\n"
-                f"Нажмите кнопку ниже, чтобы открыть карту в приложении."
+            intro = (
+                "🃏 <b>Ваша карта дня готова</b>\n\n"
+                f"<b>{card_name}</b>{rev}\n{meaning}\n\n"
+                "Откройте приложение — послание дня + совет карт.\n"
+                "А если день про отношения — загляните в «Что между вами» 💕"
             )
             keyboard = web_app_keyboard(
                 web_app_button("🃏 Открыть карту", card_url),
-                web_app_button("🔮 Расклад", spread_url),
+                web_app_button("💕 Что между вами", compat_url),
             )
-            sent = await send_telegram_message(user.telegram_id, msg, reply_markup=keyboard)
+            sent = await send_telegram_message(user.telegram_id, intro, reply_markup=keyboard)
             session.add(
                 Notification(
                     user_id=user.id,
                     notification_type=NotificationType.CARD_OF_DAY,
-                    message=msg,
+                    message=intro,
                     is_sent=sent,
                     sent_at=now if sent else None,
                 )
@@ -251,6 +255,256 @@ async def _check_inactive_users():
                 Notification(
                     user_id=user.id,
                     notification_type=ntype,
+                    message=msg,
+                    is_sent=sent,
+                    sent_at=now if sent else None,
+                )
+            )
+
+        await session.commit()
+
+
+async def _notification_ever_sent(session, user_id: int, ntype: NotificationType) -> bool:
+    result = await session.execute(
+        select(Notification.id).where(
+            Notification.user_id == user_id,
+            Notification.notification_type == ntype,
+            Notification.is_sent == True,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def _notification_sent_since(
+    session, user_id: int, ntype: NotificationType, since: datetime
+) -> bool:
+    result = await session.execute(
+        select(Notification.id).where(
+            Notification.user_id == user_id,
+            Notification.notification_type == ntype,
+            Notification.is_sent == True,
+            Notification.created_at >= since,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+@celery_app.task(name="app.infrastructure.tasks.send_start_no_webapp_reminder")
+def send_start_no_webapp_reminder(telegram_id: int, started_at_iso: str):
+    run_async(_send_start_no_webapp_reminder(telegram_id, started_at_iso))
+
+
+async def _send_start_no_webapp_reminder(telegram_id: int, started_at_iso: str):
+    from app.application.services import push_messages as copy
+
+    started_at = datetime.fromisoformat(started_at_iso)
+    if started_at.tzinfo is None:
+        started_at = started_at.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+
+        if user:
+            if await _notification_sent_since(
+                session,
+                user.id,
+                NotificationType.START_NO_WEBAPP,
+                now - timedelta(days=7),
+            ):
+                return
+            if user.last_active_at and user.last_active_at > started_at + timedelta(minutes=2):
+                return
+
+        msg = copy.start_no_webapp_message()
+        keyboard = copy.start_no_webapp_keyboard()
+        sent = await send_telegram_message(telegram_id, msg, reply_markup=keyboard)
+
+        if user and sent:
+            session.add(
+                Notification(
+                    user_id=user.id,
+                    notification_type=NotificationType.START_NO_WEBAPP,
+                    message=msg,
+                    is_sent=True,
+                    sent_at=now,
+                )
+            )
+            await session.commit()
+
+
+@celery_app.task(name="app.infrastructure.tasks.send_compat_abandon_reminder")
+def send_compat_abandon_reminder(user_id: int, viewed_at_iso: str):
+    run_async(_send_compat_abandon_reminder(user_id, viewed_at_iso))
+
+
+async def _send_compat_abandon_reminder(user_id: int, viewed_at_iso: str):
+    from app.application.services import push_messages as copy
+
+    viewed_at = datetime.fromisoformat(viewed_at_iso)
+    if viewed_at.tzinfo is None:
+        viewed_at = viewed_at.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).options(selectinload(User.limits)).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        if not user or user.is_blocked or user.is_admin or user.is_premium:
+            return
+
+        limits = user.limits
+        if limits and limits.compatibility_credits > 0:
+            return
+
+        paid_since = await session.execute(
+            select(Payment.id).where(
+                Payment.user_id == user_id,
+                Payment.payment_type == PaymentType.COMPATIBILITY,
+                Payment.status == PaymentStatus.COMPLETED,
+                Payment.created_at >= viewed_at,
+            )
+        )
+        if paid_since.scalar_one_or_none() is not None:
+            return
+
+        if await _notification_sent_since(
+            session, user.id, NotificationType.COMPAT_VIEW_ABANDONED, viewed_at
+        ):
+            return
+
+        msg = copy.compat_abandon_message()
+        keyboard = copy.compat_keyboard()
+        sent = await send_telegram_message(user.telegram_id, msg, reply_markup=keyboard)
+        session.add(
+            Notification(
+                user_id=user.id,
+                notification_type=NotificationType.COMPAT_VIEW_ABANDONED,
+                message=msg,
+                is_sent=sent,
+                sent_at=now if sent else None,
+            )
+        )
+        await session.commit()
+
+
+@celery_app.task(name="app.infrastructure.tasks.send_free_limit_followup")
+def send_free_limit_followup(user_id: int, days_until_free: int):
+    run_async(_send_free_limit_followup(user_id, days_until_free))
+
+
+async def _send_free_limit_followup(user_id: int, days_until_free: int):
+    from app.application.services import push_messages as copy
+    from app.application.services.spread_service import SpreadService
+
+    now = datetime.now(timezone.utc)
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).options(selectinload(User.limits)).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        if not user or user.is_blocked or user.is_admin:
+            return
+        if await SpreadService(session).is_premium(user.id):
+            return
+
+        if await _notification_ever_sent(session, user.id, NotificationType.FREE_LIMIT_FOLLOWUP):
+            return
+
+        msg = copy.limit_followup_message(days_until_free)
+        keyboard = copy.app_keyboard()
+        sent = await send_telegram_message(user.telegram_id, msg, reply_markup=keyboard)
+        session.add(
+            Notification(
+                user_id=user.id,
+                notification_type=NotificationType.FREE_LIMIT_FOLLOWUP,
+                message=msg,
+                is_sent=sent,
+                sent_at=now if sent else None,
+            )
+        )
+        await session.commit()
+
+
+@celery_app.task(name="app.infrastructure.tasks.send_compat_paid_upsell")
+def send_compat_paid_upsell(user_id: int):
+    run_async(_send_compat_paid_upsell(user_id))
+
+
+async def _send_compat_paid_upsell(user_id: int):
+    from app.application.services import push_messages as copy
+
+    now = datetime.now(timezone.utc)
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user or user.is_blocked:
+            return
+
+        bundle = await session.execute(
+            select(Payment.id).where(
+                Payment.user_id == user_id,
+                Payment.payment_type == PaymentType.LOVE_BUNDLE,
+                Payment.status == PaymentStatus.COMPLETED,
+            )
+        )
+        if bundle.scalar_one_or_none() is not None:
+            return
+
+        if await _notification_ever_sent(session, user.id, NotificationType.COMPAT_PAID_UPSELL):
+            return
+
+        msg = copy.compat_paid_upsell_message()
+        keyboard = copy.premium_keyboard()
+        sent = await send_telegram_message(user.telegram_id, msg, reply_markup=keyboard)
+        session.add(
+            Notification(
+                user_id=user.id,
+                notification_type=NotificationType.COMPAT_PAID_UPSELL,
+                message=msg,
+                is_sent=sent,
+                sent_at=now if sent else None,
+            )
+        )
+        await session.commit()
+
+
+@celery_app.task(name="app.infrastructure.tasks.send_weekly_referral_push")
+def send_weekly_referral_push():
+    run_async(_send_weekly_referral_push())
+
+
+async def _send_weekly_referral_push():
+    from app.application.services import push_messages as copy
+
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(
+                User.is_blocked == False,
+                User.last_active_at.isnot(None),
+                User.last_active_at >= week_ago,
+            )
+        )
+        users = result.scalars().all()
+
+        for user in users:
+            if await _notification_sent_since(
+                session, user.id, NotificationType.WEEKLY_REFERRAL, week_ago
+            ):
+                continue
+
+            msg = copy.weekly_referral_message()
+            keyboard = copy.app_keyboard()
+            sent = await send_telegram_message(user.telegram_id, msg, reply_markup=keyboard)
+            session.add(
+                Notification(
+                    user_id=user.id,
+                    notification_type=NotificationType.WEEKLY_REFERRAL,
                     message=msg,
                     is_sent=sent,
                     sent_at=now if sent else None,

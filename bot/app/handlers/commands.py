@@ -92,6 +92,8 @@ async def cmd_start(message: Message, command: CommandObject):
     if command.args and command.args.lower().startswith("ref_"):
         await _save_pending_referral(message.from_user.id, command.args)
 
+    await _schedule_start_reminder(message.from_user.id)
+
     reachable = await _webapp_is_reachable(webapp_url)
     if not reachable:
         logging.warning("WebApp URL not reachable from bot, showing button anyway: %s", webapp_url)
@@ -273,6 +275,28 @@ async def _grant_admin_on_backend(tg_user, word: str) -> dict | None:
     except Exception as e:  # noqa: BLE001
         logging.warning("Failed to grant admin on backend: %s", e)
     return None
+
+
+async def _schedule_start_reminder(telegram_id: int) -> None:
+    url = f"{settings.api_url.rstrip('/')}/api/v1/notifications/bot-start"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                json={
+                    "telegram_id": telegram_id,
+                    "secret": settings.internal_api_secret,
+                },
+                timeout=15.0,
+            )
+            if resp.status_code != 200:
+                logging.warning(
+                    "Start reminder schedule failed for telegram_id=%s: HTTP %s",
+                    telegram_id,
+                    resp.status_code,
+                )
+    except Exception as e:  # noqa: BLE001
+        logging.warning("Failed to schedule start reminder: %s", e)
 
 
 async def _save_pending_referral(telegram_id: int, referral_payload: str) -> None:

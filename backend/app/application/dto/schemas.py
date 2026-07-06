@@ -75,6 +75,11 @@ class ReferralPendingRequest(BaseModel):
     secret: str
 
 
+class BotStartNotifyRequest(BaseModel):
+    telegram_id: int
+    secret: str
+
+
 class CategoryResponse(BaseModel):
     id: int
     slug: str

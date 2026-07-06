@@ -297,6 +297,9 @@ export const api = {
 
   getLimits: () => request<Limits>('/limits'),
 
+  notifyCompatViewed: () =>
+    request<{ ok: boolean }>('/notifications/compat-viewed', { method: 'POST' }),
+
   getReferral: () => request<ReferralInfo>('/referral'),
 
   createSpread: (data: {

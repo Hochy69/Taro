@@ -8,7 +8,7 @@ docker compose ps --format 'table {{.Name}}\t{{.Status}}' | grep -E 'celery|NAME
 
 echo ""
 echo "--- Registered tasks ---"
-docker compose exec -T celery_worker celery -A app.infrastructure.celery_app inspect registered 2>/dev/null | grep -E 'send_daily_card_push|check_subscription|check_inactive' || {
+docker compose exec -T celery_worker celery -A app.infrastructure.celery_app inspect registered 2>/dev/null | grep -E 'send_daily_card_push|check_subscription|check_inactive|send_start_no_webapp|send_compat_abandon|send_free_limit|send_compat_paid|send_weekly_referral' || {
   echo "FAIL: celery worker tasks not registered"
   exit 1
 }
