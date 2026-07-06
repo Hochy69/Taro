@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --app-header-h: calc(3.5rem + env(safe-area-inset-top, 0px));
+  }
   * {
     -webkit-tap-highlight-color: transparent;
   }
@@ -29,7 +32,6 @@
   #root {
     @apply min-h-full max-w-full;
     min-height: 100dvh;
-    overflow-x: hidden;
   }
 
   input,
@@ -51,12 +53,35 @@
   }
 
   .page-shell {
-    @apply min-h-full gradient-bg w-full max-w-full overflow-x-hidden box-border px-4 pt-20 pb-8;
+    @apply min-h-full gradient-bg w-full max-w-full box-border px-4 pb-8;
     min-height: 100dvh;
+    padding-top: calc(var(--app-header-h) + 1.25rem);
+  }
+
+  .app-header {
+    height: var(--app-header-h);
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   .gradient-bg {
-    background: radial-gradient(ellipse at top, #2D1B4E 0%, #0F0A1A 50%, #0A0612 100%);
+    background: radial-gradient(
+      ellipse 95% 50% at 50% 14%,
+      #2D1B4E 0%,
+      #0F0A1A 48%,
+      #0A0612 100%
+    );
+  }
+
+  .hero-star {
+    @apply relative inline-flex items-center justify-center leading-none;
+    padding: 0.75rem 0;
+  }
+
+  .hero-star-glow {
+    @apply pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full;
+    width: 5.5rem;
+    height: 5.5rem;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.35) 0%, rgba(212, 175, 55, 0) 70%);
   }
 
   .gradient-gold {

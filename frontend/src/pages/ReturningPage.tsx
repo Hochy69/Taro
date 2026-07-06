@@ -44,13 +44,16 @@ export function ReturningPage() {
         className="w-full max-w-sm"
       >
         <div className="text-center mb-8">
-          <motion.span
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-5xl block mb-4"
-          >
-            ✨
-          </motion.span>
+          <div className="hero-star mb-4">
+            <span className="hero-star-glow" aria-hidden />
+            <motion.span
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="relative text-5xl block"
+            >
+              ✨
+            </motion.span>
+          </div>
           <h1 className="text-2xl font-display font-bold mb-2">С возвращением!</h1>
           <p className="text-white/60">
             Последняя тема: <span className="text-tarot-gold">{categoryName}</span>

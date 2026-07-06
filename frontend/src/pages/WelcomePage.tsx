@@ -95,13 +95,16 @@ export function WelcomePage() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center mb-8"
       >
-        <motion.div
-          animate={{ rotate: [0, 5, -5, 0] }}
-          transition={{ duration: 4, repeat: Infinity }}
-          className="text-6xl mb-4"
-        >
-          🔮
-        </motion.div>
+        <div className="hero-star mb-4">
+          <span className="hero-star-glow" aria-hidden />
+          <motion.div
+            animate={{ rotate: [0, 5, -5, 0] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="relative text-6xl"
+          >
+            {isReturning ? '✨' : '🔮'}
+          </motion.div>
+        </div>
         <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-3 px-2 break-words">
           {isReturning ? 'С возвращением!' : 'Добро пожаловать в Мир Таро'}
         </h1>

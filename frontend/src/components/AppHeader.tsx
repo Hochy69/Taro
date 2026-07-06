@@ -86,7 +86,7 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="fixed top-0 inset-x-0 z-40 h-14 flex items-center justify-between px-2 max-w-full overflow-hidden
+      <header className="app-header fixed top-0 inset-x-0 z-40 flex items-center justify-between px-2 max-w-full
                          bg-tarot-dark/70 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-1 min-w-0 shrink">
           <button
