@@ -19,7 +19,7 @@ const TITLES: Record<AppScreen, string> = {
   cardOfDay: 'Карта дня',
   portrait: 'Мой портрет',
   natalChart: 'Натальная карта',
-  compatibility: 'Совместимость',
+  compatibility: 'Проверка пары',
 }
 
 const MENU_ITEMS: { id: string; screen: AppScreen; label: string; icon: string }[] = [
@@ -27,7 +27,7 @@ const MENU_ITEMS: { id: string; screen: AppScreen; label: string; icon: string }
   { id: 'cardday', screen: 'cardOfDay', label: 'Карта дня', icon: '🃏' },
   { id: 'portrait', screen: 'portrait', label: 'Мой портрет', icon: '✨' },
   { id: 'natal', screen: 'natalChart', label: 'Натальная карта', icon: '🌌' },
-  { id: 'compat', screen: 'compatibility', label: 'Совместимость', icon: '💕' },
+  { id: 'compat', screen: 'compatibility', label: 'Проверка пары', icon: '💕' },
   { id: 'returning', screen: 'returning', label: 'Меню возвращения', icon: '✨' },
   { id: 'history', screen: 'history', label: 'История раскладов', icon: '📜' },
   { id: 'referral', screen: 'subscription', label: 'Пригласить друга', icon: '🎁' },

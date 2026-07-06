@@ -52,7 +52,7 @@ const DEFAULT_LOVE_BUNDLE: LoveBundle = {
 
   savings_percent: 20,
 
-  description: 'Совместимость + расклад на любовь',
+  description: 'Проверка пары + расклад на отношения',
 
 }
 
@@ -216,7 +216,7 @@ export function SubscriptionPage() {
     if (!referral?.link) return
     haptic('medium')
     const text =
-      '🔮 Присоединяйся к Миру Таро!\n\nЗарегистрируйся по моей ссылке — мы оба получим бесплатный расклад в подарок.'
+      '💕 Проверь нашу совместимость в Мире Таро!\n\nКарты покажут, насколько мы подходим друг другу. Зарегистрируйся по ссылке — нам обоим бесплатный расклад 🎁'
     const result = await shareContent(text, { url: referral.link })
     if (result === 'picker') {
       haptic('success')
@@ -464,6 +464,98 @@ export function SubscriptionPage() {
 
 
 
+        <SectionTitle>💕 Проверка пары — главный оффер</SectionTitle>
+
+
+
+        <GlassCard className="border-pink-400/35 bg-gradient-to-br from-pink-500/10 to-transparent">
+
+          <div className="text-center py-1 mb-4">
+
+            <span className="text-4xl">💕</span>
+
+            <h2 className="text-lg font-bold text-white mt-2">Что между вами?</h2>
+
+            <p className="text-white/60 text-sm mt-2">
+
+              Совместимость по картам + расклад на отношения — узнайте до важного разговора
+
+            </p>
+
+          </div>
+
+          <div className="space-y-3">
+
+            <GlassCard
+
+              onClick={busy ? undefined : () => handlePurchase('compatibility')}
+
+              className={`flex items-center justify-between gap-3 min-w-0 border-pink-400/20 !bg-white/5 ${
+
+                busy === 'compatibility' ? 'opacity-60' : ''
+
+              }`}
+
+            >
+
+              <div className="min-w-0 flex-1">
+
+                <p className="font-semibold">💕 Проверка пары</p>
+
+                <p className="text-white/50 text-sm break-words">
+
+                  Сильные стороны союза и зоны риска — {compatBase} ⭐
+
+                </p>
+
+              </div>
+
+              {renderPrice(compatBase)}
+
+            </GlassCard>
+
+
+
+            <GlassCard
+
+              onClick={busy ? undefined : () => handlePurchase('love_bundle')}
+
+              className={`flex items-center justify-between gap-3 min-w-0 border-tarot-gold/30 !bg-tarot-gold/5 ${
+
+                busy === 'love_bundle' ? 'opacity-60' : ''
+
+              }`}
+
+            >
+
+              <div className="min-w-0 flex-1">
+
+                <p className="font-semibold">💞 Пакет «Любовь» — выгоднее</p>
+
+                <p className="text-white/50 text-sm break-words">
+
+                  Проверка пары + расклад на отношения • −{loveBundle.savings_percent}%
+
+                </p>
+
+              </div>
+
+              {renderPrice(
+
+                loveBundle.original_stars,
+
+                promoPercent > 0 ? 0 : loveBundle.savings_percent,
+
+              )}
+
+            </GlassCard>
+
+          </div>
+
+        </GlassCard>
+
+
+
         <SectionTitle>🎁 Акции</SectionTitle>
 
 
@@ -574,76 +666,6 @@ export function SubscriptionPage() {
 
 
 
-        <SectionTitle>💕 Для отношений</SectionTitle>
-
-
-
-        <GlassCard
-
-          onClick={busy ? undefined : () => handlePurchase('compatibility')}
-
-          className={`flex items-center justify-between gap-3 min-w-0 border-pink-400/20 ${
-
-            busy === 'compatibility' ? 'opacity-60' : ''
-
-          }`}
-
-        >
-
-          <div className="min-w-0 flex-1">
-
-            <p className="font-semibold">💕 Совместимость</p>
-
-            <p className="text-white/50 text-sm break-words">
-
-              Солнце и Луна двух карт — узнайте до важного разговора
-
-            </p>
-
-          </div>
-
-          {renderPrice(compatBase)}
-
-        </GlassCard>
-
-
-
-        <GlassCard
-
-          onClick={busy ? undefined : () => handlePurchase('love_bundle')}
-
-          className={`flex items-center justify-between gap-3 min-w-0 border-pink-400/30 ${
-
-            busy === 'love_bundle' ? 'opacity-60' : ''
-
-          }`}
-
-        >
-
-          <div className="min-w-0 flex-1">
-
-            <p className="font-semibold">💞 Пакет «Любовь»</p>
-
-            <p className="text-white/50 text-sm break-words">
-
-              {loveBundle.description} • −{loveBundle.savings_percent}%
-
-            </p>
-
-          </div>
-
-          {renderPrice(
-
-            loveBundle.original_stars,
-
-            promoPercent > 0 ? 0 : loveBundle.savings_percent,
-
-          )}
-
-        </GlassCard>
-
-
-
         <SectionTitle>🃏 Разовые покупки</SectionTitle>
 
 
@@ -662,11 +684,11 @@ export function SubscriptionPage() {
 
           <div className="min-w-0 flex-1">
 
-            <p className="font-semibold">1 расклад</p>
+            <p className="font-semibold">🔮 Доп. расклад</p>
 
             <p className="text-white/50 text-sm">
 
-              +1 к лимиту
+              Уточните ситуацию в отношениях или любой теме
 
               {firstPaidEligible ? ` • −${firstPaidPercent}% сейчас` : ''}
 

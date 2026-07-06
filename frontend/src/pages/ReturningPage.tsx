@@ -63,6 +63,15 @@ export function ReturningPage() {
         <GlassCard className="mb-4">
           <p className="text-center text-white/80 mb-4">Что хотите сделать?</p>
           <div className="space-y-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                haptic('light')
+                goTo('compatibility')
+              }}
+            >
+              Проверить пару 💕
+            </Button>
             <Button onClick={continueTopic}>
               Продолжить эту тему
             </Button>

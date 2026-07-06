@@ -10,6 +10,7 @@ import { haptic } from '@/lib/telegram'
 import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
 import { useQuestionnaireRefill } from '@/hooks/useQuestionnaireRefill'
 import { openStarsPayment } from '@/lib/payments'
+import { LoveOfferHero } from '@/components/LoveOfferHero'
 
 const CATEGORY_NAMES: Record<string, string> = {
   love: 'Любовь',
@@ -81,11 +82,31 @@ export function WelcomePage() {
     }
   }
 
+  const handleLoveBundle = async () => {
+    if (buyingCompat) return
+    haptic('medium')
+    setBuyingCompat(true)
+    try {
+      const result = await openStarsPayment('love_bundle')
+      if (result === 'paid' || result === 'free') {
+        queryClient.invalidateQueries({ queryKey: ['limits'] })
+        goTo('compatibility')
+      }
+    } finally {
+      setBuyingCompat(false)
+    }
+  }
+
   const compatSublabel = isPremium
-    ? 'Бесплатно'
+    ? 'Проверить бесплатно'
     : compatCredits > 0
-      ? `${compatCredits} проверок`
-      : `${compatDisplayPrice} ⭐`
+      ? `Проверить (${compatCredits})`
+      : `Проверить — ${compatDisplayPrice} ⭐`
+
+  const spreadPrice = pricing?.single_spread ?? 69
+  const sortedCategories = categories
+    ?.slice()
+    .sort((a, b) => (a.slug === 'love' ? -1 : b.slug === 'love' ? 1 : 0))
 
   const refillQuestionnaire = useQuestionnaireRefill()
 
@@ -112,8 +133,26 @@ export function WelcomePage() {
         <p className="text-white/60 text-base sm:text-lg px-2 break-words">
           {isReturning && lastTopic
             ? <>Последняя тема: <span className="text-tarot-gold">{lastTopic}</span></>
-            : 'Выберите сферу жизни, которая волнует вас сейчас'}
+            : 'Сначала — про отношения: проверьте пару или сделайте расклад на любовь'}
         </p>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md mx-auto mb-6"
+      >
+        <LoveOfferHero
+          compatLabel={compatSublabel}
+          compatPrice={compatDisplayPrice}
+          spreadPrice={spreadPrice}
+          bundleOriginal={pricing?.love_bundle?.original_stars}
+          bundleStars={pricing?.love_bundle?.stars}
+          bundleSavings={pricing?.love_bundle?.savings_percent}
+          showBundle={!isPremium && Boolean(pricing?.love_bundle)}
+          onCompat={handleCompatibility}
+          onBundle={handleLoveBundle}
+        />
       </motion.div>
 
       <motion.div
@@ -158,25 +197,13 @@ export function WelcomePage() {
             <span className="font-semibold text-white text-sm break-words">Мой портрет</span>
           </div>
         </GlassCard>
-        <GlassCard onClick={handleCompatibility} delay={0.04}>
-          <div className="text-center py-2 min-w-0">
-            <span className="text-3xl block mb-2">💕</span>
-            <span className="font-semibold text-white text-sm break-words">Совместимость</span>
-            <span className="block text-tarot-gold text-xs mt-1 font-medium break-words">{compatSublabel}</span>
-            {!hasCompatAccess && (
-              <span className="block text-white/45 text-[11px] mt-1 leading-tight break-words">
-                Узнайте, что карты говорят о вас двоих
-              </span>
-            )}
-          </div>
-        </GlassCard>
-        <GlassCard onClick={() => goTo('cardOfDay')} delay={0.06}>
+        <GlassCard onClick={() => goTo('cardOfDay')} delay={0.04}>
           <div className="text-center py-2 min-w-0">
             <span className="text-3xl block mb-2">🃏</span>
             <span className="font-semibold text-white text-sm break-words">Карта дня</span>
           </div>
         </GlassCard>
-        <GlassCard onClick={() => goTo('natalChart')} delay={0.08}>
+        <GlassCard onClick={() => goTo('natalChart')} delay={0.06}>
           <div className="text-center py-2 min-w-0">
             <span className="text-3xl block mb-2">🌌</span>
             <span className="font-semibold text-white text-sm break-words">Натальная карта</span>
@@ -187,11 +214,21 @@ export function WelcomePage() {
           ? Array.from({ length: 6 }).map((_, i) => (
               <div key={`sk-${i}`} className="h-28 skeleton rounded-2xl" />
             ))
-          : categories?.map((cat, i) => (
-              <GlassCard key={cat.slug} onClick={() => handleSelect(cat)} delay={0.1 + i * 0.04}>
+          : sortedCategories?.map((cat, i) => (
+              <GlassCard
+                key={cat.slug}
+                onClick={() => handleSelect(cat)}
+                delay={0.1 + i * 0.04}
+                className={cat.slug === 'love' ? 'border-pink-400/30' : undefined}
+              >
                 <div className="text-center py-2 min-w-0">
                   <span className="text-3xl sm:text-4xl block mb-2">{cat.emoji}</span>
-                  <span className="font-semibold text-white text-sm break-words leading-tight">{cat.name}</span>
+                  <span className="font-semibold text-white text-sm break-words leading-tight">
+                    {cat.slug === 'love' ? 'Расклад на любовь' : cat.name}
+                  </span>
+                  {cat.slug === 'love' && (
+                    <span className="block text-pink-200/80 text-[11px] mt-1">Самая популярная тема</span>
+                  )}
                 </div>
               </GlassCard>
             ))}

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/store/appStore'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
 import { Button, Skeleton } from '@/components/ui'
+import { LoveOfferHero } from '@/components/LoveOfferHero'
 import { TarotCardVisual } from '@/components/tarot/TarotCardVisual'
 import { api, type AIResult, type Spread, type SpreadCard } from '@/api/client'
 import { haptic, shareContent } from '@/lib/telegram'
+import { openStarsPayment } from '@/lib/payments'
+import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
 
 function buildShareText(spread: Spread, result: AIResult): string {
   const cards = spread.cards
@@ -37,13 +40,56 @@ export function ReadingPage() {
     setAIResult,
   } = useAppStore()
   const { goTo } = useAppNavigation()
+  const queryClient = useQueryClient()
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [shareBusy, setShareBusy] = useState(false)
+  const [loveBusy, setLoveBusy] = useState(false)
   const { data: limits } = useQuery({ queryKey: ['limits'], queryFn: api.getLimits })
   const { data: pricing } = useQuery({ queryKey: ['pricing'], queryFn: api.getPricing })
   const isPremiumUser = Boolean(limits?.is_premium || limits?.is_admin)
   const singleSpreadPrice = pricing?.single_spread ?? 69
+  const compatPrice = pricing?.compatibility ?? 99
+  const promoPercent = getStoredPromoPercent()
+  const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
+  const compatCredits = limits?.compatibility_credits ?? 0
+  const hasCompatAccess = isPremiumUser || compatCredits > 0
+  const isLoveSpread = currentSpread?.category_slug === 'love' || currentSpread?.category_name === 'Любовь'
+
+  const openCompatibility = async () => {
+    if (hasCompatAccess) {
+      haptic('medium')
+      goTo('compatibility')
+      return
+    }
+    if (loveBusy) return
+    haptic('medium')
+    setLoveBusy(true)
+    try {
+      const result = await openStarsPayment('compatibility')
+      if (result === 'paid' || result === 'free') {
+        queryClient.invalidateQueries({ queryKey: ['limits'] })
+        goTo('compatibility')
+      }
+    } finally {
+      setLoveBusy(false)
+    }
+  }
+
+  const buyLoveBundle = async () => {
+    if (loveBusy) return
+    haptic('medium')
+    setLoveBusy(true)
+    try {
+      const result = await openStarsPayment('love_bundle')
+      if (result === 'paid' || result === 'free') {
+        queryClient.invalidateQueries({ queryKey: ['limits'] })
+        goTo('compatibility')
+      }
+    } finally {
+      setLoveBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!currentSpread) {
@@ -154,8 +200,12 @@ export function ReadingPage() {
     }
   }
 
+  const compatLabel = hasCompatAccess
+    ? 'Проверить пару'
+    : `Проверить пару — ${compatDisplayPrice} ⭐`
+
   return (
-    <div className={`page-shell ${isPremiumUser ? 'pb-44' : 'pb-60'}`}>
+    <div className={`page-shell ${isPremiumUser ? 'pb-52' : 'pb-72'}`}>
       <motion.h1
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -202,13 +252,27 @@ export function ReadingPage() {
           )
         ))}
         <div
-          className={isPremiumUser ? 'h-36' : 'h-52'}
+          className={isPremiumUser ? 'h-44' : 'h-64'}
           aria-hidden
         />
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-30 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-tarot-dark via-tarot-dark/95 to-transparent max-w-full overflow-hidden pointer-events-none">
         <div className="max-w-lg mx-auto space-y-2 w-full min-w-0 pointer-events-auto">
+          {!isPremiumUser && (
+            <LoveOfferHero
+              compact
+              compatLabel={compatLabel}
+              compatPrice={compatDisplayPrice}
+              spreadPrice={singleSpreadPrice}
+              bundleOriginal={pricing?.love_bundle?.original_stars}
+              bundleStars={pricing?.love_bundle?.stars}
+              bundleSavings={pricing?.love_bundle?.savings_percent}
+              showBundle={Boolean(pricing?.love_bundle)}
+              onCompat={openCompatibility}
+              onBundle={buyLoveBundle}
+            />
+          )}
           {isPremiumUser ? (
             <>
               <Button onClick={() => goTo('history')}>История</Button>
@@ -224,16 +288,21 @@ export function ReadingPage() {
           ) : (
             <>
               <Button onClick={() => goTo('subscription')}>
-                ⭐️ Оформить подписку
+                🔮 Уточнить расклад — {singleSpreadPrice} ⭐
               </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="secondary" onClick={() => goTo('subscription')}>
-                  ⭐️ Ещё расклад ({singleSpreadPrice})
+                  ⭐️ Premium
                 </Button>
                 <Button variant="secondary" onClick={handleShare} disabled={shareBusy}>
                   {shareBusy ? '…' : 'Поделиться'}
                 </Button>
               </div>
+              {isLoveSpread && (
+                <p className="text-center text-white/45 text-xs px-2">
+                  Хотите глубже? Проверьте совместимость с партнёром выше 💕
+                </p>
+              )}
               <Button variant="secondary" onClick={() => goTo('history')}>
                 Архив раскладов
               </Button>

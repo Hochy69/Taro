@@ -133,6 +133,9 @@ export function CompatibilityPage() {
         </div>
 
         <div className="max-w-md mx-auto mt-8 space-y-3">
+          <Button onClick={() => goTo('subscription')}>
+            🔮 Расклад на вашу ситуацию — {pricing?.single_spread ?? 69} ⭐
+          </Button>
           <Button onClick={() => mutation.reset()}>Проверить другого человека</Button>
           <Button variant="secondary" onClick={() => goTo('welcome')}>На главную</Button>
         </div>
@@ -144,10 +147,10 @@ export function CompatibilityPage() {
     <div className="page-shell">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8 px-2">
         <div className="text-5xl mb-3">💕</div>
-        <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">Совместимость</h1>
-        <p className="text-white/60 text-sm break-words">Синастрия lite — Солнце и Луна двух карт</p>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">Проверка пары</h1>
+        <p className="text-white/60 text-sm break-words">Что между вами — сильные стороны союза и зоны риска</p>
         <p className="text-white/45 text-xs mt-2 px-4 break-words">
-          Проверьте совместимость до важного разговора — карты покажут сильные стороны и зоны напряжения
+          Узнайте, насколько вы подходите друг другу, прежде чем принимать важные решения в отношениях
         </p>
         {isPremium ? (
           <p className="text-tarot-gold text-sm mt-2">Бесплатно с Premium</p>
@@ -161,10 +164,9 @@ export function CompatibilityPage() {
       <div className="max-w-md mx-auto space-y-4">
         {pricing?.love_bundle && !isPremium && (
           <GlassCard className="border-pink-400/25">
-            <p className="text-tarot-gold font-semibold mb-1">💕 Пакет «Любовь»</p>
+            <p className="text-tarot-gold font-semibold mb-1">💞 Пакет «Любовь» — выгоднее</p>
             <p className="text-white/70 text-sm mb-3 break-words">
-              {pricing.love_bundle.description} + расклад на отношения со скидкой{' '}
-              {pricing.love_bundle.savings_percent}%
+              Проверка пары + расклад на вашу ситуацию со скидкой {pricing.love_bundle.savings_percent}%
             </p>
             <Button onClick={buyLoveBundle} disabled={buyingBundle}>
               {buyingBundle
