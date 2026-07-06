@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     premium_daily_spreads: int = 15
     free_history_limit: int = 5
 
-    # Free tier: 1 spread per rolling period of N days; extra spreads are paid.
-    free_spreads_per_period: int = 1
+    # Free tier: N spreads per rolling period; extra spreads are paid.
+    free_spreads_per_period: int = 3
     free_spread_period_days: int = 3
 
     price_single_spread: int = 59

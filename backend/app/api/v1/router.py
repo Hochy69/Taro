@@ -478,7 +478,8 @@ async def create_spread(body: CreateSpreadRequest, user: RequireTermsUser, db: D
         raise HTTPException(
             status_code=403,
             detail=(
-                f"Бесплатный расклад доступен раз в {settings.free_spread_period_days} дня. "
+                f"Доступно {settings.free_spreads_per_period} бесплатных расклада "
+                f"каждые {settings.free_spread_period_days} дня. "
                 "Оформите подписку или купите разовый расклад за звёзды, чтобы продолжить."
             ),
         )

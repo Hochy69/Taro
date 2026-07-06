@@ -39,10 +39,10 @@ async def has_completed_single_spread_payment(session: AsyncSession, user_id: in
 
 
 async def is_first_paid_discount_eligible(session: AsyncSession, user_id: int) -> bool:
-    """True after 2+ free spreads and before the first paid single spread."""
+    """True after free tier spreads are used and before the first paid single spread."""
     if await has_completed_single_spread_payment(session, user_id):
         return False
-    return await count_completed_spreads(session, user_id) >= 2
+    return await count_completed_spreads(session, user_id) >= settings.free_spreads_per_period
 
 
 def first_paid_discounted_price() -> int:

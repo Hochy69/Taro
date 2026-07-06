@@ -496,7 +496,7 @@ export function SubscriptionPage() {
 
             <p className="text-sm text-white/70 mb-3">
 
-              Вы сделали {limits?.completed_spreads ?? 2}+ расклада — следующий за{' '}
+              Вы сделали {limits?.daily_limit ?? 3}+ расклада — следующий за{' '}
 
               {limits?.first_paid_discounted_price ?? applyDiscount(singleBase, firstPaidPercent)} ⭐
 
@@ -530,14 +530,14 @@ export function SubscriptionPage() {
 
           <div className="rounded-2xl px-4 py-4 border border-tarot-gold/40 bg-tarot-gold/10 text-white">
 
-            <p className="font-semibold mb-1">✨ Бесплатный расклад использован</p>
+            <p className="font-semibold mb-1">✨ Бесплатные расклады использованы</p>
 
             <p className="text-sm text-white/70">
-
-              Следующий бесплатный через {limits?.period_days ?? 3} дн.
-
-              {nextDate ? ` (${nextDate})` : ''}. Купите пакет или подписку ниже.
-
+              Доступно {limits?.daily_limit ?? 3} бесплатных расклада каждые {limits?.period_days ?? 3} дн.
+              {nextDate
+                ? ` Следующие бесплатные: ${nextDate}.`
+                : ` Следующие бесплатные через ${limits?.period_days ?? 3} дн.`}{' '}
+              Купите пакет или подписку ниже.
             </p>
 
           </div>

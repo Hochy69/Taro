@@ -48,6 +48,7 @@ assert p['single_spread'] == 59
 assert p['compatibility'] == 79
 print('pricing OK', list(expected.keys()))
 PY
+docker compose exec -T backend python -c "from app.core.config import settings; assert settings.free_spreads_per_period==3; print('free spreads OK', settings.free_spreads_per_period)"
 pass "pricing API all plans"
 
 echo ""

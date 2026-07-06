@@ -36,3 +36,7 @@ def test_discounted_price_100_percent_free():
 
 def test_discounted_price_never_below_one_unless_free():
     assert discounted_price(2, 50) >= 1
+
+
+def test_free_spreads_per_period_default():
+    assert settings.free_spreads_per_period == 3

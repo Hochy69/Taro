@@ -12,6 +12,8 @@ update_var() {
   fi
 }
 
+update_var FREE_SPREADS_PER_PERIOD 3
+update_var FREE_SPREAD_PERIOD_DAYS 3
 update_var PRICE_SINGLE_SPREAD 59
 update_var PRICE_COMPATIBILITY 79
 update_var PRICE_SUBSCRIPTION_1M 399
@@ -35,3 +37,5 @@ assert plans['month_3'] == 999
 assert plans['month_6'] == 1799
 print('pricing OK', p['single_spread'], p['compatibility'], p['love_bundle']['stars'])
 "
+docker compose exec -T backend python -c "from app.core.config import settings; assert settings.free_spreads_per_period == 3; print('free_spreads_per_period OK', settings.free_spreads_per_period)"
+bash scripts/test_payments_vps.sh
