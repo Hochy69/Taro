@@ -18,7 +18,7 @@ import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
 
 import { openStarsPayment } from '@/lib/payments'
 
-import { haptic, shareContent, shareText } from '@/lib/telegram'
+import { haptic, shareContent } from '@/lib/telegram'
 
 
 

@@ -57,12 +57,12 @@ export function unlockPageScroll(): void {
   html.style.minHeight = '100%'
   html.style.overflowY = 'auto'
   html.style.overflowX = 'hidden'
-  html.style.webkitOverflowScrolling = 'touch'
+  html.style.setProperty('-webkit-overflow-scrolling', 'touch')
   body.style.height = 'auto'
   body.style.minHeight = '100%'
   body.style.overflowY = 'auto'
   body.style.overflowX = 'hidden'
-  body.style.webkitOverflowScrolling = 'touch'
+  body.style.setProperty('-webkit-overflow-scrolling', 'touch')
   body.style.touchAction = 'pan-y'
 }
 
