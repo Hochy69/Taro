@@ -55,11 +55,11 @@ class Settings(BaseSettings):
     free_spreads_per_period: int = 1
     free_spread_period_days: int = 3
 
-    price_single_spread: int = 99
+    price_single_spread: int = 69
     price_subscription_1m: int = 450
     price_subscription_3m: int = 1200
     price_subscription_6m: int = 2100
-    price_compatibility: int = 100
+    price_compatibility: int = 99
 
     price_spread_pack_3: int = 249
     price_spread_pack_5: int = 399

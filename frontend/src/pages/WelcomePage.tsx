@@ -43,7 +43,7 @@ export function WelcomePage() {
     enabled: isAuthenticated,
   })
 
-  const compatPrice = pricing?.compatibility ?? 100
+  const compatPrice = pricing?.compatibility ?? 99
   const promoPercent = getStoredPromoPercent()
   const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
   const compatCredits = limits?.compatibility_credits ?? 0

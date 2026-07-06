@@ -46,9 +46,9 @@ const DEFAULT_SPREAD_PACKS: SpreadPack[] = [
 
 const DEFAULT_LOVE_BUNDLE: LoveBundle = {
 
-  stars: 200,
+  stars: 134,
 
-  original_stars: 250,
+  original_stars: 168,
 
   savings_percent: 20,
 
@@ -357,9 +357,9 @@ export function SubscriptionPage() {
 
 
 
-  const singleBase = pricing?.single_spread ?? 99
+  const singleBase = pricing?.single_spread ?? 69
 
-  const compatBase = pricing?.compatibility ?? 100
+  const compatBase = pricing?.compatibility ?? 99
 
   const firstPaidEligible = limits?.first_paid_discount_eligible ?? false
 

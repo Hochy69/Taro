@@ -44,8 +44,8 @@ expected = {
 for plan, (stars, days) in expected.items():
     got = plans[plan]
     assert got['stars'] == stars and got['duration_days'] == days, (plan, got)
-assert p['single_spread'] == 99
-assert p['compatibility'] == 100
+assert p['single_spread'] == 69
+assert p['compatibility'] == 99
 print('pricing OK', list(expected.keys()))
 PY
 pass "pricing API all plans"

@@ -43,7 +43,7 @@ export function ReadingPage() {
   const { data: limits } = useQuery({ queryKey: ['limits'], queryFn: api.getLimits })
   const { data: pricing } = useQuery({ queryKey: ['pricing'], queryFn: api.getPricing })
   const isPremiumUser = Boolean(limits?.is_premium || limits?.is_admin)
-  const singleSpreadPrice = pricing?.single_spread ?? 99
+  const singleSpreadPrice = pricing?.single_spread ?? 69
 
   useEffect(() => {
     if (!currentSpread) {
