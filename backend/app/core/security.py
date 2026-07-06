@@ -19,8 +19,9 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
 
 
 def create_admin_token(admin_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=3650)
     return jwt.encode(
-        {"sub": str(admin_id), "role": "admin"},
+        {"sub": str(admin_id), "role": "admin", "exp": expire},
         settings.admin_jwt_secret or settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
     )

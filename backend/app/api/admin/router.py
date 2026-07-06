@@ -63,10 +63,11 @@ async def grant_admin(body: AdminGrantRequest, db: AsyncSession = Depends(get_db
     await db.flush()
 
     token = create_admin_token(user.id)
+    base = settings.frontend_url.rstrip("/")
     return {
         "granted": True,
         "admin_token": token,
-        "admin_url": f"{settings.frontend_url.rstrip('/')}/admin?token={token}",
+        "admin_url": f"{base}/admin#token={token}",
         "message": "Полный доступ навсегда: безлимитные расклады, совместимость, история, все функции.",
     }
 
@@ -88,6 +89,11 @@ async def get_admin(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=403, detail="Admin access required")
     return payload
+
+
+@router.get("/ping")
+async def admin_ping(admin=Depends(get_admin)):
+    return {"ok": True, "admin_id": int(admin["sub"])}
 
 
 @router.get("/dashboard")
@@ -117,6 +123,7 @@ async def list_users(
             "username": u.username,
             "first_name": u.first_name,
             "is_premium": u.is_premium,
+            "is_admin": u.is_admin,
             "is_blocked": u.is_blocked,
             "created_at": u.created_at.isoformat(),
         }

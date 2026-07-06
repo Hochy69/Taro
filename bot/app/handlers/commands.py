@@ -180,13 +180,16 @@ async def cmd_admin(message: Message, command: CommandObject):
         return
 
     admin_url = result.get("admin_url")
+    admin_token = result.get("admin_token", "")
     await message.answer(
         "✅ <b>Доступ администратора активирован навсегда.</b>\n\n"
         "🔓 Безлимитные расклады, совместимость, полная история и все функции — "
         "навсегда на этом аккаунте.\n\n"
         "Перезайдите в мини-приложение (закройте и откройте снова), "
         "чтобы обновился доступ в приложении.\n\n"
-        "Откройте админ-панель кнопкой ниже 👇",
+        "Откройте админ-панель кнопкой ниже 👇\n\n"
+        "<i>Если кнопка открыла пустую панель — скопируйте токен и вставьте вручную на /admin:</i>\n"
+        f"<code>{admin_token}</code>",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [
