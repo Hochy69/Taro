@@ -95,12 +95,15 @@ class SpreadService:
 
         now = datetime.now(timezone.utc)
         result = await self.session.execute(
-            select(Subscription).where(
+            select(Subscription)
+            .where(
                 Subscription.user_id == user_id,
                 Subscription.status == SubscriptionStatus.ACTIVE,
                 Subscription.expires_at > now,
                 Subscription.plan != SubscriptionPlan.FREE,
             )
+            .order_by(Subscription.expires_at.desc())
+            .limit(1)
         )
         return result.scalar_one_or_none() is not None
 

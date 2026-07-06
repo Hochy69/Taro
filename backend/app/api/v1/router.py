@@ -365,6 +365,10 @@ async def get_limits(user: CurrentUser, db: DbSession):
     completed = await count_completed_spreads(db, user.id)
     first_paid_eligible = await is_first_paid_discount_eligible(db, user.id)
 
+    from app.application.services.payment_service import PaymentService
+
+    active_sub = await PaymentService(db).get_active_subscription(user.id)
+
     return LimitsResponse(
         can_spread=can_spread,
         used_today=used,
@@ -379,6 +383,8 @@ async def get_limits(user: CurrentUser, db: DbSession):
         first_paid_discount_eligible=first_paid_eligible,
         first_paid_discounted_price=first_paid_discounted_price() if first_paid_eligible else None,
         first_paid_discount_percent=settings.first_paid_discount_percent if first_paid_eligible else 0,
+        subscription_plan=active_sub.plan.value if active_sub else None,
+        subscription_expires_at=active_sub.expires_at.isoformat() if active_sub else None,
     )
 
 
@@ -709,8 +715,15 @@ async def create_payment(body: PaymentCreateRequest, user: RequireTermsUser, db:
         )
         title = "Проверка совместимости"
         description = "Одна проверка совместимости по Солнцу и Луне."
-    elif body.payment_type == "subscription" and body.plan:
-        plan = SubscriptionPlan(body.plan)
+    elif body.payment_type == "subscription":
+        if not body.plan:
+            raise HTTPException(status_code=400, detail="Укажите период подписки: month_1, month_3 или month_6")
+        try:
+            plan = SubscriptionPlan(body.plan)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Неверный период подписки")
+        if plan not in (SubscriptionPlan.MONTH_1, SubscriptionPlan.MONTH_3, SubscriptionPlan.MONTH_6):
+            raise HTTPException(status_code=400, detail="Неверный период подписки")
         base_price = service.get_subscription_price(plan)
         final_price = discounted_price(base_price, effective_discount)
         payment = await service.create_payment(

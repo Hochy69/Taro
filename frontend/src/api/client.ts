@@ -156,6 +156,8 @@ export interface Limits {
   first_paid_discount_eligible: boolean
   first_paid_discounted_price: number | null
   first_paid_discount_percent: number
+  subscription_plan?: string | null
+  subscription_expires_at?: string | null
 }
 
 export interface ReferralMilestone {

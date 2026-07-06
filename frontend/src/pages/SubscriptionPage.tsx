@@ -175,6 +175,10 @@ export function SubscriptionPage() {
   const limitReached = !!limits && !limits.can_spread && !limits.is_premium
 
   const nextDate = formatNextDate(limits?.next_available_at ?? null)
+  const premiumExpires = formatNextDate(limits?.subscription_expires_at ?? null)
+  const premiumPlanLabel = limits?.subscription_plan
+    ? PLAN_LABELS[limits.subscription_plan] ?? limits.subscription_plan
+    : null
 
 
 
@@ -691,6 +695,18 @@ export function SubscriptionPage() {
 
 
 
+        {limits?.is_premium && premiumExpires && (
+          <div className="rounded-2xl px-4 py-4 border border-emerald-400/40 bg-emerald-500/10 text-white">
+            <p className="font-semibold mb-1">✅ Premium активен</p>
+            <p className="text-sm text-white/70">
+              {premiumPlanLabel ? `Тариф: ${premiumPlanLabel}. ` : ''}
+              Действует до {premiumExpires}. Продление добавит дни к текущему сроку.
+            </p>
+          </div>
+        )}
+
+
+
         <GlassCard className="text-center border-tarot-gold/30 py-5">
 
           <span className="text-4xl">⭐️</span>
@@ -745,6 +761,12 @@ export function SubscriptionPage() {
 
                     </span>
 
+                  )}
+
+                  {plan.plan === 'month_3' && (
+                    <span className="absolute -top-2 right-3 text-[10px] px-2 py-0.5 rounded-full bg-white/15 text-white/80">
+                      ≈{Math.round(plan.stars / plan.duration_days)} ⭐/день
+                    </span>
                   )}
 
                   {plan.plan === 'month_1' && (

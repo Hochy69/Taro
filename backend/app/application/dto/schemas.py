@@ -146,6 +146,8 @@ class LimitsResponse(BaseModel):
     first_paid_discount_eligible: bool = False
     first_paid_discounted_price: int | None = None
     first_paid_discount_percent: int = 0
+    subscription_plan: str | None = None
+    subscription_expires_at: str | None = None
 
 
 class PaymentCreateRequest(BaseModel):

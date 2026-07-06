@@ -210,18 +210,26 @@ class PaymentService:
         now = datetime.now(timezone.utc)
         days = PLAN_DURATIONS.get(plan, 30)
 
-        existing = await self.session.execute(
+        result = await self.session.execute(
             select(Subscription).where(
                 Subscription.user_id == user_id,
                 Subscription.status == SubscriptionStatus.ACTIVE,
             )
         )
-        sub = existing.scalar_one_or_none()
-        if sub and sub.expires_at > now:
-            expires_at = sub.expires_at + timedelta(days=days)
-            sub.plan = plan
-            sub.expires_at = expires_at
-            sub.stars_amount = stars_amount
+        active_subs = list(result.scalars().all())
+        current = None
+        for sub in active_subs:
+            if sub.expires_at > now:
+                if current is None or sub.expires_at > current.expires_at:
+                    current = sub
+            else:
+                sub.status = SubscriptionStatus.EXPIRED
+
+        if current:
+            current.plan = plan
+            current.expires_at = current.expires_at + timedelta(days=days)
+            current.stars_amount = stars_amount
+            sub = current
         else:
             sub = Subscription(
                 user_id=user_id,
@@ -242,10 +250,14 @@ class PaymentService:
     async def get_active_subscription(self, user_id: int) -> Subscription | None:
         now = datetime.now(timezone.utc)
         result = await self.session.execute(
-            select(Subscription).where(
+            select(Subscription)
+            .where(
                 Subscription.user_id == user_id,
                 Subscription.status == SubscriptionStatus.ACTIVE,
                 Subscription.expires_at > now,
+                Subscription.plan != SubscriptionPlan.FREE,
             )
+            .order_by(Subscription.expires_at.desc())
+            .limit(1)
         )
         return result.scalar_one_or_none()
