@@ -4,7 +4,9 @@
 
 @layer base {
   :root {
-    --app-header-h: calc(3.5rem + env(safe-area-inset-top, 0px));
+    --tg-safe-top: 0px;
+    --tg-safe-bottom: 0px;
+    --app-header-h: calc(3.5rem + env(safe-area-inset-top, 0px) + var(--tg-safe-top));
   }
   * {
     -webkit-tap-highlight-color: transparent;
@@ -55,7 +57,12 @@
   .page-shell {
     @apply min-h-full gradient-bg w-full max-w-full box-border px-4 pb-8;
     min-height: 100dvh;
-    padding-top: calc(var(--app-header-h) + 1.25rem);
+    padding-top: calc(var(--app-header-h) + 1.5rem);
+  }
+
+  /* Use pb-* / pt-* utilities only — never py-* on page-shell (it overrides padding-top). */
+  .page-shell-tight-top {
+    padding-top: calc(var(--app-header-h) + 0.5rem);
   }
 
   .app-header {
@@ -74,7 +81,9 @@
 
   .hero-star {
     @apply relative inline-flex items-center justify-center leading-none;
-    padding: 0.75rem 0;
+    min-height: 4.5rem;
+    padding: 1rem 0 0.5rem;
+    overflow: visible;
   }
 
   .hero-star-glow {

@@ -23,6 +23,8 @@ export function initTelegramWebApp(): void {
   tg.ready()
   tg.expand()
 
+  applyTelegramSafeAreaInsets(tg)
+
   if (typeof tg.disableVerticalSwipes === 'function') {
     tg.disableVerticalSwipes()
   }
@@ -30,8 +32,21 @@ export function initTelegramWebApp(): void {
   unlockPageScroll()
 
   if (typeof tg.onEvent === 'function') {
-    tg.onEvent('viewportChanged', unlockPageScroll)
+    tg.onEvent('viewportChanged', () => {
+      applyTelegramSafeAreaInsets(tg)
+      unlockPageScroll()
+    })
   }
+}
+
+function applyTelegramSafeAreaInsets(tg: NonNullable<Window['Telegram']>['WebApp']): void {
+  const root = document.documentElement
+  const inset = tg.contentSafeAreaInset ?? tg.safeAreaInset
+  if (!inset) return
+  root.style.setProperty('--tg-safe-top', `${inset.top}px`)
+  root.style.setProperty('--tg-safe-bottom', `${inset.bottom}px`)
+  root.style.setProperty('--tg-safe-left', `${inset.left}px`)
+  root.style.setProperty('--tg-safe-right', `${inset.right}px`)
 }
 
 /** Android WebView / Telegram often locks body scroll — restore it. */
@@ -148,6 +163,8 @@ declare global {
         }
         disableVerticalSwipes?: () => void
         enableVerticalSwipes?: () => void
+        safeAreaInset?: { top: number; bottom: number; left: number; right: number }
+        contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number }
         onEvent?: (eventType: string, callback: () => void) => void
         offEvent?: (eventType: string, callback: () => void) => void
       }
