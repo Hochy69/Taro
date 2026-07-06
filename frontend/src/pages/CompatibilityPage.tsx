@@ -29,7 +29,7 @@ export function CompatibilityPage() {
   })
   const [buyingBundle, setBuyingBundle] = useState(false)
 
-  const compatPrice = pricing?.compatibility ?? 99
+  const compatPrice = pricing?.compatibility ?? 79
   const promoPercent = getStoredPromoPercent()
   const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
   const loveBundleDisplay =

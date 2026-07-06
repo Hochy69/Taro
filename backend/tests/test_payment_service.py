@@ -10,9 +10,9 @@ from app.infrastructure.database.models import SubscriptionPlan
 
 
 def test_subscription_plan_prices_match_settings():
-    assert PLAN_PRICES[SubscriptionPlan.MONTH_1] == settings.price_subscription_1m == 450
-    assert PLAN_PRICES[SubscriptionPlan.MONTH_3] == settings.price_subscription_3m == 1200
-    assert PLAN_PRICES[SubscriptionPlan.MONTH_6] == settings.price_subscription_6m == 2100
+    assert PLAN_PRICES[SubscriptionPlan.MONTH_1] == settings.price_subscription_1m == 399
+    assert PLAN_PRICES[SubscriptionPlan.MONTH_3] == settings.price_subscription_3m == 999
+    assert PLAN_PRICES[SubscriptionPlan.MONTH_6] == settings.price_subscription_6m == 1799
 
 
 def test_subscription_plan_durations():

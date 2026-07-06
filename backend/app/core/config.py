@@ -55,14 +55,14 @@ class Settings(BaseSettings):
     free_spreads_per_period: int = 1
     free_spread_period_days: int = 3
 
-    price_single_spread: int = 69
-    price_subscription_1m: int = 450
-    price_subscription_3m: int = 1200
-    price_subscription_6m: int = 2100
-    price_compatibility: int = 99
+    price_single_spread: int = 59
+    price_subscription_1m: int = 399
+    price_subscription_3m: int = 999
+    price_subscription_6m: int = 1799
+    price_compatibility: int = 79
 
-    price_spread_pack_3: int = 249
-    price_spread_pack_5: int = 399
+    price_spread_pack_3: int = 149
+    price_spread_pack_5: int = 229
     first_paid_discount_percent: int = 30
     love_bundle_discount_percent: int = 20
     referral_premium_trial_days: int = 3

@@ -13,9 +13,9 @@ with urllib.request.urlopen('http://localhost:8000/api/v1/pricing') as resp:
     p = json.load(resp)
 plans = p["plans"]
 assert len(plans) == 3
-assert plans[0]["plan"] == "month_1" and plans[0]["stars"] == 450 and plans[0]["duration_days"] == 30
-assert plans[1]["plan"] == "month_3" and plans[1]["stars"] == 1200 and plans[1]["duration_days"] == 90
-assert plans[2]["plan"] == "month_6" and plans[2]["stars"] == 2100 and plans[2]["duration_days"] == 180
+assert plans[0]["plan"] == "month_1" and plans[0]["stars"] == 399 and plans[0]["duration_days"] == 30
+assert plans[1]["plan"] == "month_3" and plans[1]["stars"] == 999 and plans[1]["duration_days"] == 90
+assert plans[2]["plan"] == "month_6" and plans[2]["stars"] == 1799 and plans[2]["duration_days"] == 180
 print("pricing OK:", [(x["plan"], x["stars"], x["duration_days"]) for x in plans])
 PY
 

@@ -38,9 +38,9 @@ const PLAN_LABELS: Record<string, string> = {
 
 const DEFAULT_SPREAD_PACKS: SpreadPack[] = [
 
-  { pack: 'spread_pack_3', stars: 249, spreads: 3, savings_percent: 45, label: '3 расклада' },
+  { pack: 'spread_pack_3', stars: 149, spreads: 3, savings_percent: 16, label: '3 расклада' },
 
-  { pack: 'spread_pack_5', stars: 399, spreads: 5, savings_percent: 47, label: '5 раскладов' },
+  { pack: 'spread_pack_5', stars: 229, spreads: 5, savings_percent: 22, label: '5 раскладов' },
 
 ]
 
@@ -48,9 +48,9 @@ const DEFAULT_SPREAD_PACKS: SpreadPack[] = [
 
 const DEFAULT_LOVE_BUNDLE: LoveBundle = {
 
-  stars: 134,
+  stars: 110,
 
-  original_stars: 168,
+  original_stars: 138,
 
   savings_percent: 20,
 
@@ -359,15 +359,15 @@ export function SubscriptionPage() {
 
 
 
-  const singleBase = pricing?.single_spread ?? 69
+  const singleBase = pricing?.single_spread ?? 59
 
-  const compatBase = pricing?.compatibility ?? 99
+  const compatBase = pricing?.compatibility ?? 79
 
   const firstPaidEligible = limits?.first_paid_discount_eligible ?? false
 
   const firstPaidPercent = limits?.first_paid_discount_percent ?? pricing?.first_paid_discount_percent ?? 30
 
-  const perDayStars = pricing?.subscription_per_day_stars ?? Math.round((pricing?.plans?.[0]?.stars ?? 450) / 30)
+  const perDayStars = pricing?.subscription_per_day_stars ?? Math.round((pricing?.plans?.[0]?.stars ?? 399) / 30)
 
   const spreadPacks = pricing?.spread_packs?.length ? pricing.spread_packs : DEFAULT_SPREAD_PACKS
 

@@ -21,7 +21,7 @@ export function useCompatibilityPurchase() {
     queryFn: api.getPricing,
   })
 
-  const compatPrice = pricing?.compatibility ?? 99
+  const compatPrice = pricing?.compatibility ?? 79
   const promoPercent = getStoredPromoPercent()
   const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
   const compatCredits = limits?.compatibility_credits ?? 0

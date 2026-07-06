@@ -37,15 +37,15 @@ with urllib.request.urlopen('http://localhost:8000/api/v1/pricing') as r:
     p = json.load(r)
 plans = {x['plan']: x for x in p['plans']}
 expected = {
-    'month_1': (450, 30),
-    'month_3': (1200, 90),
-    'month_6': (2100, 180),
+    'month_1': (399, 30),
+    'month_3': (999, 90),
+    'month_6': (1799, 180),
 }
 for plan, (stars, days) in expected.items():
     got = plans[plan]
     assert got['stars'] == stars and got['duration_days'] == days, (plan, got)
-assert p['single_spread'] == 69
-assert p['compatibility'] == 99
+assert p['single_spread'] == 59
+assert p['compatibility'] == 79
 print('pricing OK', list(expected.keys()))
 PY
 pass "pricing API all plans"

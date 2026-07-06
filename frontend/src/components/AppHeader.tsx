@@ -23,7 +23,7 @@ const TITLES: Record<AppScreen, string> = {
 }
 
 const MENU_ITEMS: { id: string; screen: AppScreen; label: string; icon: string }[] = [
-  { id: 'compat', screen: 'compatibility', label: 'Что между вами — 99 ⭐', icon: '💕' },
+  { id: 'compat', screen: 'compatibility', label: 'Что между вами — 79 ⭐', icon: '💕' },
   { id: 'spread', screen: 'welcome', label: 'Новый расклад', icon: '🔮' },
   { id: 'cardday', screen: 'cardOfDay', label: 'Карта дня', icon: '🃏' },
   { id: 'portrait', screen: 'portrait', label: 'Мой портрет', icon: '✨' },
