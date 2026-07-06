@@ -24,6 +24,17 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    preview: {
+      port: 5173,
+      host: true,
+      allowedHosts: true,
+      proxy: {
+        '/api': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
+      },
+    },
     build: {
       target: 'esnext',
       minify: 'esbuild',

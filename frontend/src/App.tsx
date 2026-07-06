@@ -126,10 +126,10 @@ function SessionBootstrap() {
     // Only redirect to the landing screen if the user has not navigated away
     // during the async bootstrap (prevents a late auth response from kicking
     // the user back to the main menu).
-    const landing = (isReturningUser: boolean) => {
+    const landing = () => {
       const path = window.location.pathname
-      if (path === ROUTES.welcome || path === '/') {
-        goTo(isReturningUser ? 'returning' : 'welcome', true)
+      if (path === ROUTES.welcome || path === '/' || path === ROUTES.returning) {
+        goTo('welcome', true)
       }
     }
 
@@ -159,7 +159,7 @@ function SessionBootstrap() {
             auth.user.terms_accepted,
           )
           await afterAuth(auth.user.terms_accepted)
-          landing(auth.is_returning)
+          landing()
           return
         }
 
@@ -197,7 +197,7 @@ function SessionBootstrap() {
           auth.user.terms_accepted,
         )
         await afterAuth(auth.user.terms_accepted)
-        landing(auth.is_returning)
+        landing()
       } catch (e) {
         console.warn('Session bootstrap failed:', e)
         if (tg?.initData) {
@@ -209,7 +209,7 @@ function SessionBootstrap() {
             'Откройте приложение через бота @best1tarolog_bot (команда /card или кнопка в сообщении), а не по обычной ссылке в браузере.',
           )
         } else {
-          landing(false)
+          landing()
         }
       } finally {
         setLoading(false)

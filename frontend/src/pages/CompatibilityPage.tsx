@@ -152,11 +152,31 @@ export function CompatibilityPage() {
           Проверьте совместимость до важного разговора — карты покажут сильные стороны и зоны напряжения
         </p>
         {isPremium ? (
-          <p className="text-tarot-gold font-semibold text-lg mt-3">Бесплатно с Premium</p>
+          <>
+            <div className="mt-4 inline-flex flex-col items-center">
+              <span className="text-white/50 text-xs uppercase tracking-wider mb-1">
+                Стоимость проверки
+              </span>
+              <span className="text-4xl font-bold text-tarot-gold leading-none">
+                {compatDisplayPrice}
+                <span className="text-2xl ml-1">⭐</span>
+              </span>
+              <span className="text-tarot-gold text-sm font-medium mt-2">бесплатно с Premium</span>
+            </div>
+          </>
         ) : compatCredits > 0 ? (
-          <p className="text-tarot-gold font-semibold text-lg mt-3">
-            Доступно проверок: {compatCredits}
-          </p>
+          <div className="mt-4 inline-flex flex-col items-center">
+            <span className="text-white/50 text-xs uppercase tracking-wider mb-1">
+              Стоимость проверки
+            </span>
+            <span className="text-4xl font-bold text-tarot-gold leading-none">
+              {compatDisplayPrice}
+              <span className="text-2xl ml-1">⭐</span>
+            </span>
+            <span className="text-tarot-gold text-sm font-medium mt-2">
+              У вас доступно: {compatCredits}
+            </span>
+          </div>
         ) : (
           <div className="mt-4 inline-flex flex-col items-center">
             <span className="text-white/50 text-xs uppercase tracking-wider mb-1">
