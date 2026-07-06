@@ -12,6 +12,8 @@ import { useAppStore } from '@/store/appStore'
 
 import { GlassCard, Skeleton } from '@/components/ui'
 
+import { RelationshipsPremiumHero } from '@/components/RelationshipsPremiumHero'
+
 import { PromoCodeField } from '@/components/PromoCodeField'
 
 import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
@@ -395,6 +397,9 @@ export function SubscriptionPage() {
 
     null
 
+  const isPremium = Boolean(limits?.is_premium || limits?.is_admin)
+  const compatCredits = limits?.compatibility_credits ?? 0
+
   const isReferralFocus = location.hash === '#referral'
 
   useEffect(() => {
@@ -417,7 +422,7 @@ export function SubscriptionPage() {
       <p className="text-white/50 text-sm mb-6 max-w-lg mx-auto">
         {isReferralFocus
           ? 'Приглашайте друзей и получайте награды'
-          : 'Пакеты, подписки и разовые покупки'}
+          : '«Что между вами» — главное для пары. Ниже — подписки и пакеты.'}
       </p>
 
 
@@ -460,6 +465,21 @@ export function SubscriptionPage() {
 
           </motion.div>
 
+        )}
+
+
+
+        {!isReferralFocus && (
+          <RelationshipsPremiumHero
+            compatBase={compatBase}
+            loveBundle={loveBundle}
+            compatCredits={compatCredits}
+            isPremium={isPremium}
+            busy={busy}
+            onBuyCompatibility={() => handlePurchase('compatibility')}
+            onBuyLoveBundle={() => handlePurchase('love_bundle')}
+            renderPrice={renderPrice}
+          />
         )}
 
 
@@ -571,76 +591,6 @@ export function SubscriptionPage() {
           </GlassCard>
 
         ))}
-
-
-
-        <SectionTitle>💕 Для отношений</SectionTitle>
-
-
-
-        <GlassCard
-
-          onClick={busy ? undefined : () => handlePurchase('compatibility')}
-
-          className={`flex items-center justify-between gap-3 min-w-0 border-pink-400/20 ${
-
-            busy === 'compatibility' ? 'opacity-60' : ''
-
-          }`}
-
-        >
-
-          <div className="min-w-0 flex-1">
-
-            <p className="font-semibold">💕 Что между вами</p>
-
-            <p className="text-white/50 text-sm break-words">
-
-              Солнце и Луна двух карт — узнайте до важного разговора
-
-            </p>
-
-          </div>
-
-          {renderPrice(compatBase)}
-
-        </GlassCard>
-
-
-
-        <GlassCard
-
-          onClick={busy ? undefined : () => handlePurchase('love_bundle')}
-
-          className={`flex items-center justify-between gap-3 min-w-0 border-pink-400/30 ${
-
-            busy === 'love_bundle' ? 'opacity-60' : ''
-
-          }`}
-
-        >
-
-          <div className="min-w-0 flex-1">
-
-            <p className="font-semibold">💞 Пакет «Любовь»</p>
-
-            <p className="text-white/50 text-sm break-words">
-
-              {loveBundle.description} • −{loveBundle.savings_percent}%
-
-            </p>
-
-          </div>
-
-          {renderPrice(
-
-            loveBundle.original_stars,
-
-            promoPercent > 0 ? 0 : loveBundle.savings_percent,
-
-          )}
-
-        </GlassCard>
 
 
 
