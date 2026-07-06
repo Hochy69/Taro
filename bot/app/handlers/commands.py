@@ -50,6 +50,26 @@ def webapp_keyboard(url: str | None = None) -> InlineKeyboardMarkup:
     )
 
 
+def start_keyboard() -> InlineKeyboardMarkup:
+    base = get_webapp_url().rstrip("/")
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🔮 Открыть расклад",
+                    web_app=WebAppInfo(url=base),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💕 Что между вами",
+                    web_app=WebAppInfo(url=f"{base}/compatibility"),
+                )
+            ],
+        ]
+    )
+
+
 def compatibility_keyboard() -> InlineKeyboardMarkup:
     target = f"{get_webapp_url().rstrip('/')}/compatibility"
     return InlineKeyboardMarkup(
@@ -90,7 +110,7 @@ async def cmd_start(message: Message, command: CommandObject):
         f"{referral_note}\n\n"
         "Нажмите кнопку ниже, чтобы начать расклад 👇"
         f"{'' if reachable else _unreachable_note()}",
-        reply_markup=compatibility_keyboard(),
+        reply_markup=start_keyboard(),
         parse_mode="HTML",
     )
 

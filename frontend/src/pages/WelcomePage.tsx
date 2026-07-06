@@ -1,15 +1,12 @@
-import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { useAppStore } from '@/store/appStore'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
 import { GlassCard, Button } from '@/components/ui'
 import { TarotCardVisual } from '@/components/tarot/TarotCardVisual'
 import { haptic } from '@/lib/telegram'
-import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
 import { useQuestionnaireRefill } from '@/hooks/useQuestionnaireRefill'
-import { openStarsPayment } from '@/lib/payments'
 
 const CATEGORY_NAMES: Record<string, string> = {
   love: 'Любовь',
@@ -23,8 +20,6 @@ const CATEGORY_NAMES: Record<string, string> = {
 export function WelcomePage() {
   const { goTo } = useAppNavigation()
   const { setCategory, isReturning, lastCategory, isAuthenticated } = useAppStore()
-  const queryClient = useQueryClient()
-  const [buyingCompat, setBuyingCompat] = useState(false)
   const { data: categories, isLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: api.getCategories,
@@ -33,22 +28,12 @@ export function WelcomePage() {
     queryKey: ['limits'],
     queryFn: api.getLimits,
   })
-  const { data: pricing } = useQuery({
-    queryKey: ['pricing'],
-    queryFn: api.getPricing,
-  })
   const { data: cardOfDay } = useQuery({
     queryKey: ['card-of-day'],
     queryFn: api.getCardOfDay,
     enabled: isAuthenticated,
   })
 
-  const compatPrice = pricing?.compatibility ?? 99
-  const promoPercent = getStoredPromoPercent()
-  const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
-  const compatCredits = limits?.compatibility_credits ?? 0
-  const isPremium = Boolean(limits?.is_premium || limits?.is_admin)
-  const hasCompatAccess = isPremium || compatCredits > 0
   const lastTopic = lastCategory ? CATEGORY_NAMES[lastCategory] || lastCategory : null
 
   const handleSelect = (category: NonNullable<typeof categories>[0]) => {
@@ -60,32 +45,6 @@ export function WelcomePage() {
     }
     goTo('questionnaire')
   }
-
-  const handleCompatibility = async () => {
-    if (hasCompatAccess) {
-      haptic('medium')
-      goTo('compatibility')
-      return
-    }
-    if (buyingCompat) return
-    haptic('medium')
-    setBuyingCompat(true)
-    try {
-      const result = await openStarsPayment('compatibility')
-      if (result === 'paid' || result === 'free') {
-        queryClient.invalidateQueries({ queryKey: ['limits'] })
-        goTo('compatibility')
-      }
-    } finally {
-      setBuyingCompat(false)
-    }
-  }
-
-  const compatSublabel = isPremium
-    ? 'Бесплатно'
-    : compatCredits > 0
-      ? `${compatCredits} проверок`
-      : `${compatDisplayPrice} ⭐`
 
   const refillQuestionnaire = useQuestionnaireRefill()
 
@@ -173,25 +132,13 @@ export function WelcomePage() {
             <span className="font-semibold text-white text-sm break-words">Мой портрет</span>
           </div>
         </GlassCard>
-        <GlassCard onClick={handleCompatibility} delay={0.04}>
-          <div className="text-center py-2 min-w-0">
-            <span className="text-3xl block mb-2">💕</span>
-            <span className="font-semibold text-white text-sm break-words">Что между вами</span>
-            <span className="block text-tarot-gold text-xs mt-1 font-medium break-words">{compatSublabel}</span>
-            {!hasCompatAccess && (
-              <span className="block text-white/45 text-[11px] mt-1 leading-tight break-words">
-                Узнайте, что карты говорят о вас двоих
-              </span>
-            )}
-          </div>
-        </GlassCard>
-        <GlassCard onClick={() => goTo('cardOfDay')} delay={0.06}>
+        <GlassCard onClick={() => goTo('cardOfDay')} delay={0.04}>
           <div className="text-center py-2 min-w-0">
             <span className="text-3xl block mb-2">🃏</span>
             <span className="font-semibold text-white text-sm break-words">Карта дня</span>
           </div>
         </GlassCard>
-        <GlassCard onClick={() => goTo('natalChart')} delay={0.08}>
+        <GlassCard onClick={() => goTo('natalChart')} delay={0.06}>
           <div className="text-center py-2 min-w-0">
             <span className="text-3xl block mb-2">🌌</span>
             <span className="font-semibold text-white text-sm break-words">Натальная карта</span>
