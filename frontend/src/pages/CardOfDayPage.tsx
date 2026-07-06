@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, getAccessToken } from '@/api/client'
+import { useAppStore } from '@/store/appStore'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
 import { Button, GlassCard, Skeleton } from '@/components/ui'
 import { TarotCardVisual } from '@/components/tarot/TarotCardVisual'
@@ -14,12 +15,28 @@ const SECTIONS = [
 
 export function CardOfDayPage() {
   const { goTo } = useAppNavigation()
-  const { data, isLoading, error } = useQuery({
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated)
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['card-of-day'],
     queryFn: api.getCardOfDay,
+    enabled: isAuthenticated && Boolean(getAccessToken()),
+    retry: 2,
   })
 
-  if (isLoading) {
+  if (!isAuthenticated || !getAccessToken()) {
+    return (
+      <div className="min-h-screen gradient-bg flex flex-col items-center justify-center px-6 text-center">
+        <div className="text-5xl mb-4">🔮</div>
+        <p className="text-white/70 mb-6">
+          Откройте карту дня через бота @best1tarolog_bot — команда /card или кнопка «Открыть карту» в
+          сообщении.
+        </p>
+        <Button onClick={() => window.location.reload()}>Попробовать снова</Button>
+      </div>
+    )
+  }
+
+  if (isLoading || isFetching) {
     return (
       <div className="min-h-screen gradient-bg px-4 pt-20 pb-8">
         <Skeleton className="h-64 w-full mb-6" />
@@ -33,8 +50,16 @@ export function CardOfDayPage() {
     return (
       <div className="min-h-screen gradient-bg flex flex-col items-center justify-center px-6 text-center">
         <div className="text-5xl mb-4">🌫️</div>
-        <p className="text-white/70 mb-6">Не удалось загрузить карту дня</p>
-        <Button onClick={() => goTo('welcome')}>На главную</Button>
+        <p className="text-white/70 mb-2">Не удалось загрузить карту дня</p>
+        {error instanceof Error && error.message && (
+          <p className="text-white/40 text-sm mb-6">{error.message}</p>
+        )}
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button onClick={() => refetch()}>Повторить</Button>
+          <Button variant="secondary" onClick={() => goTo('welcome')}>
+            На главную
+          </Button>
+        </div>
       </div>
     )
   }

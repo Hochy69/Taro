@@ -14,7 +14,12 @@ from app.infrastructure.database.models import (
     User,
 )
 from app.infrastructure.database.session import async_session
-from app.infrastructure.telegram_notify import escape_telegram_html, send_telegram_message
+from app.infrastructure.telegram_notify import (
+    escape_telegram_html,
+    send_telegram_message,
+    web_app_button,
+    web_app_keyboard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -173,10 +178,13 @@ async def _send_daily_card_push():
                 f"🃏 <b>Карта дня — {card_name}</b>{rev}\n\n"
                 f"{meaning}\n\n"
                 f"💫 Карты намекают — хотите уточнить расклад?\n\n"
-                f'👉 <a href="{card_url}">Открыть карту</a> · '
-                f'<a href="{spread_url}">Сделать расклад</a>'
+                f"Нажмите кнопку ниже, чтобы открыть карту в приложении."
             )
-            sent = await send_telegram_message(user.telegram_id, msg)
+            keyboard = web_app_keyboard(
+                web_app_button("🃏 Открыть карту", card_url),
+                web_app_button("🔮 Расклад", spread_url),
+            )
+            sent = await send_telegram_message(user.telegram_id, msg, reply_markup=keyboard)
             session.add(
                 Notification(
                     user_id=user.id,

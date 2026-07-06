@@ -19,7 +19,13 @@ def escape_telegram_html(text: str) -> str:
     return html.escape(text, quote=False)
 
 
-async def send_telegram_message(telegram_id: int, text: str, *, parse_mode: str | None = "HTML") -> bool:
+async def send_telegram_message(
+    telegram_id: int,
+    text: str,
+    *,
+    parse_mode: str | None = "HTML",
+    reply_markup: dict | None = None,
+) -> bool:
     if not settings.telegram_bot_token:
         logger.error("TELEGRAM_BOT_TOKEN is not configured — cannot send notification")
         return False
@@ -32,6 +38,8 @@ async def send_telegram_message(telegram_id: int, text: str, *, parse_mode: str 
     }
     if parse_mode:
         payload["parse_mode"] = parse_mode
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
 
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
@@ -53,5 +61,18 @@ async def send_telegram_message(telegram_id: int, text: str, *, parse_mode: str 
     if parse_mode:
         plain = html.unescape(_TAG_RE.sub("", text)).strip()
         if plain and plain != text:
-            return await send_telegram_message(telegram_id, plain, parse_mode=None)
+            return await send_telegram_message(
+                telegram_id,
+                plain,
+                parse_mode=None,
+                reply_markup=reply_markup,
+            )
     return False
+
+
+def web_app_button(text: str, url: str) -> dict:
+    return {"text": text, "web_app": {"url": url}}
+
+
+def web_app_keyboard(*buttons: dict) -> dict:
+    return {"inline_keyboard": [list(buttons)]}

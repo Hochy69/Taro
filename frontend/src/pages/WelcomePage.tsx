@@ -22,7 +22,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 
 export function WelcomePage() {
   const { goTo } = useAppNavigation()
-  const { setCategory, isReturning, lastCategory } = useAppStore()
+  const { setCategory, isReturning, lastCategory, isAuthenticated } = useAppStore()
   const queryClient = useQueryClient()
   const [buyingCompat, setBuyingCompat] = useState(false)
   const { data: categories, isLoading } = useQuery({
@@ -40,6 +40,7 @@ export function WelcomePage() {
   const { data: cardOfDay } = useQuery({
     queryKey: ['card-of-day'],
     queryFn: api.getCardOfDay,
+    enabled: isAuthenticated,
   })
 
   const compatPrice = pricing?.compatibility ?? 100

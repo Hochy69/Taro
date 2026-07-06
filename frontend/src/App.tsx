@@ -204,6 +204,10 @@ function SessionBootstrap() {
           setBootError(
             'Не удалось подключиться к серверу. Закройте мини-приложение, отправьте боту /start и нажмите кнопку снова.',
           )
+        } else if (window.location.pathname !== ROUTES.welcome && window.location.pathname !== '/') {
+          setBootError(
+            'Откройте приложение через бота @best1tarolog_bot (команда /card или кнопка в сообщении), а не по обычной ссылке в браузере.',
+          )
         } else {
           landing(false)
         }
@@ -247,6 +251,27 @@ function SessionBootstrap() {
   // Gate the whole app behind a one-time acceptance of the offer/terms.
   if (isAuthenticated && !termsAccepted) {
     return <TermsGate />
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center px-6 text-center">
+        <div className="max-w-sm">
+          <div className="text-5xl mb-4">🔮</div>
+          <p className="text-white/80 mb-4">
+            Откройте Мир Таро через бота @best1tarolog_bot — отправьте /start и нажмите кнопку
+            «Открыть расклад».
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-tarot-gold to-yellow-400 text-tarot-dark font-semibold"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return <AppRoutes />
