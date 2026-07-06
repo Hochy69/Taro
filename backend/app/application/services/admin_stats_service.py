@@ -1,8 +1,8 @@
-"""Admin dashboard statistics — excludes test accounts and uses UTC day boundaries."""
+"""Admin dashboard statistics — production metrics exclude QA and admin accounts."""
 
 from datetime import datetime, time, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
@@ -12,16 +12,18 @@ from app.infrastructure.database.models import (
     Spread,
     SpreadStatus,
     Subscription,
+    SubscriptionPlan,
     SubscriptionStatus,
     User,
 )
 
 # Internal / QA accounts that must not skew production metrics.
 TEST_TELEGRAM_IDS: frozenset[int] = frozenset({
-    0,          # dev browser user
-    999999,     # limit-test script
+    0,  # dev browser user
+    999999,  # limit-test script
     999888777,  # seed test user
-    555000111,  # manual test
+    999999001,  # subscription payment integration tests
+    555000111,  # manual admin API test
     555001,
     555002,
 })
@@ -32,8 +34,25 @@ def _utc_day_bounds(day: datetime.date) -> tuple[datetime, datetime]:
     return start, start + timedelta(days=1)
 
 
-def _real_users_filter():
+def _is_real_user():
     return User.telegram_id.notin_(TEST_TELEGRAM_IDS)
+
+
+def _is_production_user():
+    """Real end-users only — excludes QA accounts and internal admins."""
+    return and_(
+        User.telegram_id.notin_(TEST_TELEGRAM_IDS),
+        User.is_admin.is_(False),
+    )
+
+
+def _is_real_payment():
+    """Ignore synthetic QA / promo charges."""
+    tid = Payment.telegram_payment_id
+    return or_(
+        tid.is_(None),
+        and_(~tid.like("test_%"), ~tid.like("promo_%")),
+    )
 
 
 class AdminStatsService:
@@ -46,18 +65,18 @@ class AdminStatsService:
         day_start, day_end = _utc_day_bounds(today)
         month_ago = now - timedelta(days=30)
 
-        real = _real_users_filter()
+        real = _is_real_user()
+        prod = _is_production_user()
 
         total_users = (
-            await self.session.execute(
-                select(func.count(User.id)).where(real)
-            )
+            await self.session.execute(select(func.count(User.id)).where(real))
         ).scalar() or 0
 
         dau = (
             await self.session.execute(
                 select(func.count(User.id)).where(
                     real,
+                    User.last_active_at.is_not(None),
                     User.last_active_at >= day_start,
                     User.last_active_at < day_end,
                 )
@@ -68,6 +87,7 @@ class AdminStatsService:
             await self.session.execute(
                 select(func.count(User.id)).where(
                     real,
+                    User.last_active_at.is_not(None),
                     User.last_active_at >= month_ago,
                 )
             )
@@ -83,21 +103,17 @@ class AdminStatsService:
             )
         ).scalar() or 0
 
-        active_subs = (
+        # Paid premium = valid subscription row (not stale is_premium flag / admin grant).
+        active_premium_users = (
             await self.session.execute(
-                select(func.count(Subscription.id))
+                select(func.count(func.distinct(Subscription.user_id)))
                 .join(User, Subscription.user_id == User.id)
                 .where(
-                    real,
+                    prod,
                     Subscription.status == SubscriptionStatus.ACTIVE,
                     Subscription.expires_at > now,
+                    Subscription.plan != SubscriptionPlan.FREE,
                 )
-            )
-        ).scalar() or 0
-
-        premium_users = (
-            await self.session.execute(
-                select(func.count(User.id)).where(real, User.is_premium.is_(True))
             )
         ).scalar() or 0
 
@@ -105,7 +121,11 @@ class AdminStatsService:
             await self.session.execute(
                 select(func.count(func.distinct(Payment.user_id)))
                 .join(User, Payment.user_id == User.id)
-                .where(real, Payment.status == PaymentStatus.COMPLETED)
+                .where(
+                    prod,
+                    Payment.status == PaymentStatus.COMPLETED,
+                    _is_real_payment(),
+                )
             )
         ).scalar() or 0
 
@@ -113,7 +133,11 @@ class AdminStatsService:
             await self.session.execute(
                 select(func.coalesce(func.sum(Payment.stars_amount), 0))
                 .join(User, Payment.user_id == User.id)
-                .where(real, Payment.status == PaymentStatus.COMPLETED)
+                .where(
+                    prod,
+                    Payment.status == PaymentStatus.COMPLETED,
+                    _is_real_payment(),
+                )
             )
         ).scalar() or 0
 
@@ -147,20 +171,20 @@ class AdminStatsService:
                 select(func.avg(AIResult.generation_time_ms))
                 .join(Spread, AIResult.spread_id == Spread.id)
                 .join(User, Spread.user_id == User.id)
-                .where(real)
+                .where(real, AIResult.generation_time_ms > 0)
             )
         ).scalar() or 0
 
         conversion = (paying_users / total_users * 100) if total_users > 0 else 0
-        arpu = (total_revenue / total_users) if total_users > 0 else 0
+        arpu = (total_revenue / paying_users) if paying_users > 0 else 0
 
         return {
             "total_users": total_users,
             "dau": dau,
             "mau": mau,
             "new_registrations_today": new_users,
-            "active_subscriptions": active_subs,
-            "premium_users": premium_users,
+            "active_subscriptions": active_premium_users,
+            "premium_users": active_premium_users,
             "paying_users": paying_users,
             "total_revenue_stars": int(total_revenue),
             "arpu": round(float(arpu), 2),

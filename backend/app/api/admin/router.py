@@ -155,7 +155,10 @@ async def unblock_user(user_id: int, admin=Depends(get_admin), db: AsyncSession 
 
 @router.get("/finance")
 async def finance_stats(admin=Depends(get_admin), db: AsyncSession = Depends(get_db)):
-    from app.application.services.admin_stats_service import TEST_TELEGRAM_IDS
+    from app.application.services.admin_stats_service import (
+        _is_production_user,
+        _is_real_payment,
+    )
 
     now = datetime.now(timezone.utc)
     day_ago = now - timedelta(days=1)
@@ -169,8 +172,9 @@ async def finance_stats(admin=Depends(get_admin), db: AsyncSession = Depends(get
                     select(func.coalesce(func.sum(Payment.stars_amount), 0))
                     .join(User, Payment.user_id == User.id)
                     .where(
-                        User.telegram_id.notin_(TEST_TELEGRAM_IDS),
+                        _is_production_user(),
                         Payment.status == PaymentStatus.COMPLETED,
+                        _is_real_payment(),
                         Payment.created_at >= since,
                     )
                 )
