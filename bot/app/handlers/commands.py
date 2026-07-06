@@ -62,7 +62,7 @@ def start_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="💕 Что между вами",
+                    text="💕 Что между вами — 99 ⭐",
                     web_app=WebAppInfo(url=f"{base}/compatibility"),
                 )
             ],
@@ -76,7 +76,7 @@ def compatibility_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="💕 Что между вами",
+                    text="💕 Что между вами — 99 ⭐",
                     web_app=WebAppInfo(url=target),
                 )
             ]

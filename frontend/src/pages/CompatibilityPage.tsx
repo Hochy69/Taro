@@ -43,15 +43,17 @@ export function CompatibilityPage() {
     },
   })
 
-  const buyCredit = async () => {
-    if (buying) return
+  const buyCredit = async (): Promise<boolean> => {
+    if (buying) return false
     haptic('medium')
     setBuying(true)
     try {
       const result = await openStarsPayment('compatibility')
       if (result === 'paid' || result === 'free') {
-        queryClient.invalidateQueries({ queryKey: ['limits'] })
+        await queryClient.refetchQueries({ queryKey: ['limits'] })
+        return true
       }
+      return false
     } finally {
       setBuying(false)
     }
@@ -71,11 +73,11 @@ export function CompatibilityPage() {
     }
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.name.trim() || !form.birth_date) return
     if (!hasCompatAccess) {
-      buyCredit()
-      return
+      const paid = await buyCredit()
+      if (!paid) return
     }
     haptic('medium')
     mutation.mutate({
@@ -150,11 +152,21 @@ export function CompatibilityPage() {
           Проверьте совместимость до важного разговора — карты покажут сильные стороны и зоны напряжения
         </p>
         {isPremium ? (
-          <p className="text-tarot-gold text-sm mt-2">Бесплатно с Premium</p>
+          <p className="text-tarot-gold font-semibold text-lg mt-3">Бесплатно с Premium</p>
         ) : compatCredits > 0 ? (
-          <p className="text-tarot-gold text-sm mt-2">Доступно проверок: {compatCredits}</p>
+          <p className="text-tarot-gold font-semibold text-lg mt-3">
+            Доступно проверок: {compatCredits}
+          </p>
         ) : (
-          <p className="text-tarot-gold text-sm mt-2">Стоимость проверки: {compatDisplayPrice} ⭐</p>
+          <div className="mt-4 inline-flex flex-col items-center">
+            <span className="text-white/50 text-xs uppercase tracking-wider mb-1">
+              Стоимость проверки
+            </span>
+            <span className="text-4xl font-bold text-tarot-gold leading-none">
+              {compatDisplayPrice}
+              <span className="text-2xl ml-1">⭐</span>
+            </span>
+          </div>
         )}
       </motion.div>
 
