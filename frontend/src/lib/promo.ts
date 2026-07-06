@@ -28,6 +28,14 @@ export function applyDiscount(price: number, discountPercent: number): number {
   return Math.max(1, Math.round((price * (100 - discountPercent)) / 100))
 }
 
+/** Love bundle: promo and built-in bundle discount — best of both. */
+export function loveBundleDisplayPrice(
+  originalStars: number,
+  bundleSavingsPercent: number,
+): number {
+  return applyDiscount(originalStars, Math.max(getStoredPromoPercent(), bundleSavingsPercent))
+}
+
 export function formatPrice(price: number, discountPercent: number): string {
   const final = applyDiscount(price, discountPercent)
   if (discountPercent > 0 && final < price) {

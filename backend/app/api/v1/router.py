@@ -49,6 +49,7 @@ from app.application.services.marketing_service import (
     first_paid_discounted_price,
     is_first_paid_discount_eligible,
     love_bundle_base_price,
+    love_bundle_effective_discount,
     love_bundle_price,
     spread_pack_savings_percent,
 )
@@ -691,8 +692,9 @@ async def create_payment(body: PaymentCreateRequest, user: RequireTermsUser, db:
         description = "Пять дополнительных раскладов Таро — максимальная выгода."
     elif body.payment_type == "love_bundle":
         base_price = love_bundle_base_price()
-        if not promo:
-            effective_discount = settings.love_bundle_discount_percent
+        effective_discount = love_bundle_effective_discount(
+            promo.discount_percent if promo else None
+        )
         final_price = discounted_price(base_price, effective_discount)
         payment = await service.create_payment(
             user,

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { api, type Limits } from '@/api/client'
-import { getStoredPromoCode } from '@/lib/promo'
+import { getStoredPromoCode, clearStoredPromo } from '@/lib/promo'
 import { haptic } from '@/lib/telegram'
 
 const POLL_ATTEMPTS = 16
@@ -68,6 +68,7 @@ export async function openStarsPayment(
 
   if (payment.free || payment.status === 'completed') {
     haptic('success')
+    if (payment.promo_code) clearStoredPromo()
     options?.onPaid?.()
     return 'free'
   }
@@ -85,6 +86,7 @@ export async function openStarsPayment(
           haptic('success')
           const activated = await waitForPaymentActivation(paymentType, beforeLimits)
           if (activated) {
+            if (payment.promo_code) clearStoredPromo()
             options?.onPaid?.()
             resolve('paid')
             return

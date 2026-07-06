@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import Payment, PromoCode, PromoCodeUse
+from app.infrastructure.database.models import Payment, PaymentStatus, PromoCode, PromoCodeUse
 
 DEFAULT_PROMO_CODES: list[tuple[str, int, int]] = [
     ("TARO10", 10, 5),
@@ -42,10 +42,6 @@ class PromoService:
                         is_active=True,
                     )
                 )
-            else:
-                promo.discount_percent = percent
-                promo.max_uses = max_uses
-                promo.is_active = True
         await self.session.flush()
 
     async def validate_for_user(self, code: str, user_id: int) -> PromoCode:
@@ -72,11 +68,41 @@ class PromoService:
         if used.scalar_one_or_none() is not None:
             raise ValueError("Вы уже использовали этот промокод")
 
+        pending = await self.session.execute(
+            select(Payment.id).where(
+                Payment.user_id == user_id,
+                Payment.promo_code_id == promo.id,
+                Payment.status == PaymentStatus.PENDING,
+            )
+        )
+        if pending.scalar_one_or_none() is not None:
+            raise ValueError(
+                "У вас уже есть неоплаченный счёт с этим промокодом. Оплатите его или дождитесь отмены."
+            )
+
         return promo
 
     async def record_redemption(
         self, promo: PromoCode, user_id: int, payment: Payment
     ) -> None:
+        existing_use = await self.session.execute(
+            select(PromoCodeUse.id).where(
+                PromoCodeUse.promo_code_id == promo.id,
+                PromoCodeUse.user_id == user_id,
+            )
+        )
+        if existing_use.scalar_one_or_none() is not None:
+            return
+
+        existing_payment = await self.session.execute(
+            select(PromoCodeUse.id).where(PromoCodeUse.payment_id == payment.id)
+        )
+        if existing_payment.scalar_one_or_none() is not None:
+            return
+
+        if promo.max_uses is not None and promo.used_count >= promo.max_uses:
+            return
+
         self.session.add(
             PromoCodeUse(
                 promo_code_id=promo.id,

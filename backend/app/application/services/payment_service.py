@@ -201,6 +201,8 @@ class PaymentService:
         payment.telegram_payment_id = telegram_payment_id
         payment.status = PaymentStatus.COMPLETED
         await self._apply_purchase(payment)
+        if payment.promo_code_id:
+            await self._record_promo_redemption(payment)
         await self.session.flush()
         return payment
 

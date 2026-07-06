@@ -76,7 +76,7 @@ export function RelationshipsPremiumHero({
             </div>
             {renderPrice(
               loveBundle.original_stars,
-              promoPercent > 0 ? 0 : loveBundle.savings_percent,
+              Math.max(promoPercent, loveBundle.savings_percent),
             )}
           </div>
           <Button

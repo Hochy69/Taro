@@ -60,6 +60,14 @@ def love_bundle_price() -> int:
     return discounted_price(love_bundle_base_price(), settings.love_bundle_discount_percent)
 
 
+def love_bundle_effective_discount(promo_percent: int | None) -> int:
+    """Bundle sale and promo stack by best discount, never worse than bundle price."""
+    bundle_percent = settings.love_bundle_discount_percent
+    if promo_percent and promo_percent > 0:
+        return max(promo_percent, bundle_percent)
+    return bundle_percent
+
+
 def spread_pack_savings_percent(pack_stars: int, spreads: int) -> int:
     single_total = settings.price_single_spread * spreads
     if single_total <= 0:

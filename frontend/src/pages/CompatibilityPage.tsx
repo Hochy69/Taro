@@ -5,7 +5,7 @@ import { api, type PartnerBirthData } from '@/api/client'
 import { useAppNavigation } from '@/hooks/useAppNavigation'
 import { Button, GlassCard } from '@/components/ui'
 import { haptic } from '@/lib/telegram'
-import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
+import { applyDiscount, getStoredPromoPercent, loveBundleDisplayPrice } from '@/lib/promo'
 import { openStarsPayment } from '@/lib/payments'
 
 export function CompatibilityPage() {
@@ -32,6 +32,13 @@ export function CompatibilityPage() {
   const compatPrice = pricing?.compatibility ?? 99
   const promoPercent = getStoredPromoPercent()
   const compatDisplayPrice = applyDiscount(compatPrice, promoPercent)
+  const loveBundleDisplay =
+    pricing?.love_bundle != null
+      ? loveBundleDisplayPrice(
+          pricing.love_bundle.original_stars,
+          pricing.love_bundle.savings_percent,
+        )
+      : null
   const compatCredits = limits?.compatibility_credits ?? 0
   const isPremium = Boolean(limits?.is_premium || limits?.is_admin)
   const hasCompatAccess = isPremium || compatCredits > 0
@@ -201,7 +208,7 @@ export function CompatibilityPage() {
             <Button onClick={buyLoveBundle} disabled={buyingBundle}>
               {buyingBundle
                 ? 'Оплата...'
-                : `Купить за ${applyDiscount(pricing.love_bundle.original_stars, pricing.love_bundle.savings_percent)} ⭐`}
+                : `Купить за ${loveBundleDisplay ?? '—'} ⭐`}
             </Button>
           </GlassCard>
         )}
