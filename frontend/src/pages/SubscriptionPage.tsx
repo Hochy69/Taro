@@ -1,8 +1,10 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { motion } from 'framer-motion'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+
+import { useLocation } from 'react-router-dom'
 
 import { api, type LoveBundle, type ReferralMilestone, type SpreadPack } from '@/api/client'
 
@@ -105,6 +107,10 @@ function formatNextDate(iso: string | null): string | null {
 export function SubscriptionPage() {
 
   const { isReturning, lastCategory, setAuth } = useAppStore()
+
+  const location = useLocation()
+
+  const referralSectionRef = useRef<HTMLElement>(null)
 
   const queryClient = useQueryClient()
 
@@ -389,15 +395,30 @@ export function SubscriptionPage() {
 
     null
 
+  const isReferralFocus = location.hash === '#referral'
 
+  useEffect(() => {
+    if (!isReferralFocus) return
+    const scrollToReferral = () => {
+      referralSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    const timer = window.setTimeout(scrollToReferral, 80)
+    return () => window.clearTimeout(timer)
+  }, [isReferralFocus, isLoading, referral])
 
   return (
 
     <div className="page-shell pb-12">
 
-      <h1 className="text-2xl font-display font-bold mb-2 max-w-lg mx-auto">Premium</h1>
+      <h1 className="text-2xl font-display font-bold mb-2 max-w-lg mx-auto">
+        {isReferralFocus ? 'Пригласи друга' : 'Premium'}
+      </h1>
 
-      <p className="text-white/50 text-sm mb-6 max-w-lg mx-auto">Пакеты, подписки и разовые покупки</p>
+      <p className="text-white/50 text-sm mb-6 max-w-lg mx-auto">
+        {isReferralFocus
+          ? 'Приглашайте друзей и получайте награды'
+          : 'Пакеты, подписки и разовые покупки'}
+      </p>
 
 
 
@@ -801,6 +822,7 @@ export function SubscriptionPage() {
 
 
 
+        <section id="referral" ref={referralSectionRef} className="scroll-mt-20 space-y-4">
         <SectionTitle>🎁 Пригласи друга</SectionTitle>
 
 
@@ -908,6 +930,8 @@ export function SubscriptionPage() {
           </div>
 
         </GlassCard>
+
+        </section>
 
 
 

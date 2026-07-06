@@ -5,14 +5,19 @@ import { useAppStore, type AppScreen } from '@/store/appStore'
 import { useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 
+type GoToOptions = { replace?: boolean; hash?: string }
+
 export function useAppNavigation() {
   const navigate = useNavigate()
   const setScreen = useAppStore((s) => s.setScreen)
 
   const goTo = useCallback(
-    (screen: AppScreen, replace = false) => {
+    (screen: AppScreen, options?: boolean | GoToOptions) => {
+      const opts: GoToOptions =
+        typeof options === 'boolean' ? { replace: options } : (options ?? {})
       setScreen(screen)
-      navigate(ROUTES[screen], { replace })
+      const hash = opts.hash ? `#${opts.hash}` : ''
+      navigate(`${ROUTES[screen]}${hash}`, { replace: opts.replace })
     },
     [navigate, setScreen],
   )

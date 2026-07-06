@@ -42,6 +42,7 @@ export function AppHeader() {
   const refillQuestionnaire = useQuestionnaireRefill()
 
   const screen: AppScreen = PATH_TO_SCREEN[location.pathname] ?? 'welcome'
+  const isReferralScreen = screen === 'subscription' && location.hash === '#referral'
   const isEntry = screen === 'welcome' || screen === 'returning'
 
   const goBack = () => {
@@ -73,10 +74,10 @@ export function AppHeader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEntry, location.pathname])
 
-  const navigateTo = (target: AppScreen) => {
+  const navigateTo = (target: AppScreen, hash?: string) => {
     haptic('light')
     setOpen(false)
-    goTo(target)
+    goTo(target, hash ? { hash } : undefined)
   }
 
   const handleQuestionnaireRefill = () => {
@@ -118,7 +119,7 @@ export function AppHeader() {
         </div>
 
         <span className="text-sm font-medium text-white/70 pr-2 truncate shrink min-w-0 max-w-[45%] text-right">
-          {TITLES[screen]}
+          {isReferralScreen ? 'Пригласи друга' : TITLES[screen]}
         </span>
       </header>
 
@@ -155,10 +156,12 @@ export function AppHeader() {
                 {MENU_ITEMS.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => navigateTo(item.screen)}
+                    onClick={() => navigateTo(item.screen, item.id === 'referral' ? 'referral' : undefined)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left
                                 transition active:scale-[0.98] ${
-                                  screen === item.screen
+                                  (item.id === 'referral' && isReferralScreen) ||
+                                  (item.id === 'premium' && screen === 'subscription' && !isReferralScreen) ||
+                                  (item.id !== 'referral' && item.id !== 'premium' && screen === item.screen)
                                     ? 'bg-tarot-gold/15 text-tarot-gold'
                                     : 'text-white/90 hover:bg-white/10'
                                 }`}
