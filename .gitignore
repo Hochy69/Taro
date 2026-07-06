@@ -32,3 +32,5 @@ htmlcov/
 
 # Docker
 postgres_data/
+celerybeat-schedule
+backend/celerybeat-schedule
