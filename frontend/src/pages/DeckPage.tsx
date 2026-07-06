@@ -44,7 +44,7 @@ export function DeckPage() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg flex flex-col items-center justify-center px-4 relative overflow-hidden">
+    <div className="min-h-[100dvh] gradient-bg flex flex-col items-center justify-center px-4 relative overflow-x-hidden">
       {(phase === 'shuffling' || phase === 'dealt') && <Particles />}
 
       <motion.div

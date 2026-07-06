@@ -13,6 +13,7 @@ import {
 import { useAppNavigation, useSyncRouteToStore } from '@/hooks/useAppNavigation'
 import { ROUTES } from '@/lib/routes'
 import { tryApplyPromoFromUrl } from '@/lib/applyPromoFromUrl'
+import { initTelegramWebApp, unlockPageScroll } from '@/lib/telegram'
 import { AppHeader } from '@/components/AppHeader'
 import { TermsGate } from '@/components/TermsGate'
 import AdminDashboard from '@/pages/admin/AdminDashboard'
@@ -31,7 +32,7 @@ import { CompatibilityPage } from '@/pages/CompatibilityPage'
 function AppRoutes() {
   useSyncRouteToStore()
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
+    <div className="w-full max-w-full min-h-0">
       <AppHeader />
       <Routes>
         <Route path={ROUTES.welcome} element={<WelcomePage />} />
@@ -117,8 +118,9 @@ function SessionBootstrap() {
 
     const tg = window.Telegram?.WebApp
     if (tg) {
-      tg.ready()
-      tg.expand()
+      initTelegramWebApp()
+    } else {
+      unlockPageScroll()
     }
 
     // Only redirect to the landing screen if the user has not navigated away

@@ -37,7 +37,7 @@ export function ReturningPage() {
   }
 
   return (
-    <div className="page-shell flex flex-col items-center justify-center min-h-screen">
+    <div className="page-shell flex flex-col items-center py-8">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

@@ -13,6 +13,44 @@ const ZODIAC_SIGNS = [
   { name: 'Стрелец', start: [11, 22], end: [12, 21] },
 ]
 
+export function initTelegramWebApp(): void {
+  const tg = window.Telegram?.WebApp
+  if (!tg) {
+    unlockPageScroll()
+    return
+  }
+
+  tg.ready()
+  tg.expand()
+
+  if (typeof tg.disableVerticalSwipes === 'function') {
+    tg.disableVerticalSwipes()
+  }
+
+  unlockPageScroll()
+
+  if (typeof tg.onEvent === 'function') {
+    tg.onEvent('viewportChanged', unlockPageScroll)
+  }
+}
+
+/** Android WebView / Telegram often locks body scroll — restore it. */
+export function unlockPageScroll(): void {
+  const html = document.documentElement
+  const body = document.body
+  html.style.height = 'auto'
+  html.style.minHeight = '100%'
+  html.style.overflowY = 'auto'
+  html.style.overflowX = 'hidden'
+  html.style.webkitOverflowScrolling = 'touch'
+  body.style.height = 'auto'
+  body.style.minHeight = '100%'
+  body.style.overflowY = 'auto'
+  body.style.overflowX = 'hidden'
+  body.style.webkitOverflowScrolling = 'touch'
+  body.style.touchAction = 'pan-y'
+}
+
 export function getZodiacFromDate(dateStr: string): string {
   const date = new Date(dateStr)
   const month = date.getMonth() + 1
@@ -108,6 +146,10 @@ declare global {
           onClick: (cb: () => void) => void
           offClick: (cb: () => void) => void
         }
+        disableVerticalSwipes?: () => void
+        enableVerticalSwipes?: () => void
+        onEvent?: (eventType: string, callback: () => void) => void
+        offEvent?: (eventType: string, callback: () => void) => void
       }
     }
   }

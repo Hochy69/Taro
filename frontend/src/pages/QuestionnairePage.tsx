@@ -139,7 +139,7 @@ export function QuestionnairePage() {
   }
 
   return (
-    <div className="page-shell flex flex-col px-4 sm:px-6 overflow-x-hidden">
+    <div className="page-shell px-4 sm:px-6">
       <div className="flex gap-2 mb-8">
         {STEPS.map((_, i) => (
           <div
@@ -158,7 +158,7 @@ export function QuestionnairePage() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -24 }}
           transition={{ duration: 0.3 }}
-          className="flex-1 flex flex-col"
+          className="flex flex-col"
         >
           {step === 'name' && (
             <>
@@ -318,7 +318,7 @@ export function QuestionnairePage() {
         </motion.div>
       </AnimatePresence>
 
-      <div className="mt-auto pt-6">
+      <div className="mt-8 pt-2">
         {error && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}

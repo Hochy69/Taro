@@ -148,7 +148,7 @@ export function ReadingPage() {
   }
 
   return (
-    <div className={`page-shell ${isPremiumUser ? 'pb-40' : 'pb-56'}`}>
+    <div className={`page-shell ${isPremiumUser ? 'pb-44' : 'pb-60'}`}>
       <motion.h1
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

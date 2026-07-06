@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
+import { initTelegramWebApp } from './lib/telegram'
+
+initTelegramWebApp()
 
 const queryClient = new QueryClient({
   defaultOptions: {
