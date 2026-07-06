@@ -50,26 +50,6 @@ def webapp_keyboard(url: str | None = None) -> InlineKeyboardMarkup:
     )
 
 
-def love_offer_keyboard() -> InlineKeyboardMarkup:
-    base = get_webapp_url().rstrip("/")
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="💕 Что между вами",
-                    web_app=WebAppInfo(url=f"{base}/compatibility"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔮 Расклад на любовь",
-                    web_app=WebAppInfo(url=base),
-                )
-            ],
-        ]
-    )
-
-
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject):
     name = message.from_user.first_name or "друг"
@@ -96,7 +76,7 @@ async def cmd_start(message: Message, command: CommandObject):
         f"{referral_note}\n\n"
         "Нажмите кнопку ниже, чтобы начать расклад 👇"
         f"{'' if reachable else _unreachable_note()}",
-        reply_markup=love_offer_keyboard(),
+        reply_markup=webapp_keyboard(),
         parse_mode="HTML",
     )
 
@@ -105,8 +85,7 @@ async def cmd_start(message: Message, command: CommandObject):
 async def cmd_help(message: Message):
     await message.answer(
         "🔮 <b>Мир Таро — команды</b>\n\n"
-        "• /start — проверка пары и расклад\n"
-        "• /love — проверка совместимости\n"
+        "• /start — приветствие и расклад\n"
         "• /app — открыть мини-приложение\n"
         "• /card — карта дня\n"
         "• /premium — подписка и разовые расклады\n"
@@ -167,47 +146,23 @@ async def cmd_invite(message: Message):
     )
 
 
-@dp.message(Command("love"))
-async def cmd_love(message: Message):
-    webapp_url = f"{get_webapp_url().rstrip('/')}/compatibility"
-    reachable = await _webapp_is_reachable(webapp_url)
-    p = settings
-    await message.answer(
-        "💕 <b>Что между вами</b>\n\n"
-        "Узнайте, насколько вы подходите друг другу:\n"
-        "• сильные стороны союза\n"
-        "• зоны риска и напряжения\n"
-        "• совет карт до важного разговора\n\n"
-        f"💕 Проверка — <b>{p.price_compatibility} ⭐</b>\n"
-        f"💞 Пакет «Любовь» (проверка + расклад) — выгоднее\n"
-        f"🔮 Доп. расклад — <b>{p.price_single_spread} ⭐</b>"
-        f"{'' if reachable else _unreachable_note()}",
-        reply_markup=love_offer_keyboard(),
-        parse_mode="HTML",
-    )
-
-
 @dp.message(Command("premium"))
 async def cmd_premium(message: Message):
     p = settings
-    bundle_base = p.price_compatibility + p.price_single_spread
-    bundle_final = max(1, round(bundle_base * 0.8))
     await message.answer(
-        "💕 <b>Любовь и отношения</b>\n\n"
-        f"💕 Что между вами — {p.price_compatibility} ⭐\n"
-        f"💞 Пакет «Любовь» — {bundle_final} ⭐ (проверка + расклад)\n"
-        f"🔮 Доп. расклад — {p.price_single_spread} ⭐\n\n"
         "⭐️ <b>Premium подписка</b>\n\n"
-        f"📦 3 расклада — {p.price_spread_pack_3} ⭐\n"
-        f"📦 5 раскладов — {p.price_spread_pack_5} ⭐\n"
-        f"📅 1 месяц — {p.price_subscription_1m} ⭐\n"
-        f"📅 3 месяца — {p.price_subscription_3m} ⭐\n"
-        f"📅 6 месяцев — {p.price_subscription_6m} ⭐\n\n"
+        f"🃏 Разовый расклад — {p.price_single_spread} ⭐️\n"
+        f"📦 3 расклада — {p.price_spread_pack_3} ⭐️\n"
+        f"📦 5 раскладов — {p.price_spread_pack_5} ⭐️\n"
+        f"💕 Совместимость — {p.price_compatibility} ⭐️\n"
+        f"📅 1 месяц — {p.price_subscription_1m} ⭐️\n"
+        f"📅 3 месяца — {p.price_subscription_3m} ⭐️\n"
+        f"📅 6 месяцев — {p.price_subscription_6m} ⭐️\n\n"
         "• 15 раскладов в сутки\n"
         "• Полная история\n"
-        "• Совместимость бесплатно\n\n"
-        "Оформите в приложении 👇",
-        reply_markup=love_offer_keyboard(),
+        "• Все функции\n\n"
+        "Оформите подписку в приложении 👇",
+        reply_markup=webapp_keyboard(),
         parse_mode="HTML",
     )
 

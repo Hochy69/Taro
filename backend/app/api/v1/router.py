@@ -417,7 +417,7 @@ async def get_pricing():
             "stars": bundle_final,
             "original_stars": bundle_base,
             "savings_percent": settings.love_bundle_discount_percent,
-            "description": "Проверка пары + расклад на отношения",
+            "description": "Совместимость + расклад на любовь",
         },
         plans=[
             SubscriptionPlanResponse(
