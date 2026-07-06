@@ -10,7 +10,7 @@ fail() { echo "FAIL: $1"; FAIL=1; }
 
 echo "========== 1. DOCKER SERVICES =========="
 docker compose ps --format 'table {{.Name}}\t{{.Status}}' | tee /tmp/taro_ps.txt
-for svc in taro-backend-1 taro-frontend-1 taro-bot-1 taro-postgres-1 taro-redis-1; do
+for svc in taro-backend-1 taro-frontend-1 taro-bot-1 taro-postgres-1 taro-redis-1 taro-celery_worker-1 taro-celery_beat-1; do
   if docker compose ps --status running --format '{{.Name}}' | grep -qx "$svc"; then
     pass "container $svc running"
   else

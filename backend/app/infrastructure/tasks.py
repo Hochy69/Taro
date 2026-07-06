@@ -1,7 +1,8 @@
 import asyncio
-from datetime import date, datetime, timedelta, timezone
+import logging
+from datetime import date, datetime, time, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.infrastructure.celery_app import celery_app
@@ -13,21 +14,9 @@ from app.infrastructure.database.models import (
     User,
 )
 from app.infrastructure.database.session import async_session
+from app.infrastructure.telegram_notify import escape_telegram_html, send_telegram_message
 
-
-async def _send_telegram_message(telegram_id: int, text: str) -> bool:
-    from app.core.config import settings
-    import httpx
-
-    if not settings.telegram_bot_token:
-        return False
-    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            url,
-            json={"chat_id": telegram_id, "text": text, "parse_mode": "HTML"},
-        )
-        return response.status_code == 200
+logger = logging.getLogger(__name__)
 
 
 def run_async(coro):
@@ -38,6 +27,31 @@ def run_async(coro):
         loop.close()
 
 
+def utc_day_bounds(day: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(day, time.min, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    return start, end
+
+
+async def _notification_already_sent(
+    session,
+    user_id: int,
+    ntype: NotificationType,
+    day: date,
+) -> bool:
+    day_start, day_end = utc_day_bounds(day)
+    result = await session.execute(
+        select(Notification.id).where(
+            Notification.user_id == user_id,
+            Notification.notification_type == ntype,
+            Notification.created_at >= day_start,
+            Notification.created_at < day_end,
+            Notification.is_sent == True,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
 @celery_app.task(name="app.infrastructure.tasks.check_subscription_notifications")
 def check_subscription_notifications():
     run_async(_check_subscription_notifications())
@@ -45,6 +59,7 @@ def check_subscription_notifications():
 
 async def _check_subscription_notifications():
     now = datetime.now(timezone.utc)
+    today = now.date()
 
     async with async_session() as session:
         result = await session.execute(
@@ -56,11 +71,13 @@ async def _check_subscription_notifications():
 
         for sub in subscriptions:
             user = sub.user
-            if not user:
+            if not user or user.is_blocked:
                 continue
 
             expires = sub.expires_at
-            days_left = (expires - now).days
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            days_left = (expires.date() - today).days
 
             if days_left == 3:
                 msg = (
@@ -87,15 +104,19 @@ async def _check_subscription_notifications():
             else:
                 continue
 
-            sent = await _send_telegram_message(user.telegram_id, msg)
-            notification = Notification(
-                user_id=user.id,
-                notification_type=ntype,
-                message=msg,
-                is_sent=sent,
-                sent_at=now if sent else None,
+            if await _notification_already_sent(session, user.id, ntype, today):
+                continue
+
+            sent = await send_telegram_message(user.telegram_id, msg, parse_mode=None)
+            session.add(
+                Notification(
+                    user_id=user.id,
+                    notification_type=ntype,
+                    message=msg,
+                    is_sent=sent,
+                    sent_at=now if sent else None,
+                )
             )
-            session.add(notification)
 
         await session.commit()
 
@@ -110,9 +131,13 @@ async def _send_daily_card_push():
     from app.core.config import settings
 
     now = datetime.now(timezone.utc)
-    today = date.today()
+    today = now.date()
     webapp = settings.telegram_webapp_url.rstrip("/")
     card_url = f"{webapp}/card-of-day"
+
+    sent_count = 0
+    skipped = 0
+    failed = 0
 
     async with async_session() as session:
         result = await session.execute(
@@ -121,20 +146,14 @@ async def _send_daily_card_push():
             .where(
                 User.is_blocked == False,
                 User.daily_card_push == True,
-                User.terms_accepted_at.isnot(None),
             )
         )
         users = result.scalars().all()
+        logger.info("Daily card push: %s eligible users", len(users))
 
         for user in users:
-            already = await session.execute(
-                select(Notification.id).where(
-                    Notification.user_id == user.id,
-                    Notification.notification_type == NotificationType.CARD_OF_DAY,
-                    func.date(Notification.created_at) == today,
-                )
-            )
-            if already.scalar_one_or_none():
+            if await _notification_already_sent(session, user.id, NotificationType.CARD_OF_DAY, today):
+                skipped += 1
                 continue
 
             name = user.profile.name if user.profile and user.profile.name else (user.first_name or "друг")
@@ -142,18 +161,22 @@ async def _send_daily_card_push():
             try:
                 data = await get_card_of_day(session, user.id, name, zodiac, today)
             except Exception:
+                logger.exception("Daily card generation failed for user_id=%s", user.id)
+                failed += 1
                 continue
 
             rev = " (перевёрнутая)" if data["card"]["is_reversed"] else ""
             spread_url = f"{webapp}/"
+            card_name = escape_telegram_html(data["card"]["name"])
+            meaning = escape_telegram_html(data["meaning"])
             msg = (
-                f"🃏 <b>Карта дня — {data['card']['name']}</b>{rev}\n\n"
-                f"{data['meaning']}\n\n"
+                f"🃏 <b>Карта дня — {card_name}</b>{rev}\n\n"
+                f"{meaning}\n\n"
                 f"💫 Карты намекают — хотите уточнить расклад?\n\n"
-                f"👉 <a href=\"{card_url}\">Открыть карту</a> · "
-                f"<a href=\"{spread_url}\">Сделать расклад</a>"
+                f'👉 <a href="{card_url}">Открыть карту</a> · '
+                f'<a href="{spread_url}">Сделать расклад</a>'
             )
-            sent = await _send_telegram_message(user.telegram_id, msg)
+            sent = await send_telegram_message(user.telegram_id, msg)
             session.add(
                 Notification(
                     user_id=user.id,
@@ -163,8 +186,19 @@ async def _send_daily_card_push():
                     sent_at=now if sent else None,
                 )
             )
+            if sent:
+                sent_count += 1
+            else:
+                failed += 1
 
         await session.commit()
+
+    logger.info(
+        "Daily card push finished: sent=%s skipped=%s failed=%s",
+        sent_count,
+        skipped,
+        failed,
+    )
 
 
 @celery_app.task(name="app.infrastructure.tasks.check_inactive_users")
@@ -174,6 +208,7 @@ def check_inactive_users():
 
 async def _check_inactive_users():
     now = datetime.now(timezone.utc)
+    today = now.date()
 
     async with async_session() as session:
         result = await session.execute(
@@ -200,14 +235,18 @@ async def _check_inactive_users():
             else:
                 continue
 
-            sent = await _send_telegram_message(user.telegram_id, msg)
-            notification = Notification(
-                user_id=user.id,
-                notification_type=ntype,
-                message=msg,
-                is_sent=sent,
-                sent_at=now if sent else None,
+            if await _notification_already_sent(session, user.id, ntype, today):
+                continue
+
+            sent = await send_telegram_message(user.telegram_id, msg, parse_mode=None)
+            session.add(
+                Notification(
+                    user_id=user.id,
+                    notification_type=ntype,
+                    message=msg,
+                    is_sent=sent,
+                    sent_at=now if sent else None,
+                )
             )
-            session.add(notification)
 
         await session.commit()

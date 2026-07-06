@@ -7,14 +7,15 @@ celery_app = Celery(
     "tarot",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
+    include=["app.infrastructure.tasks"],
 )
 
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
+    timezone="Europe/Moscow",
+    enable_utc=False,
     beat_schedule={
         "check-subscription-expiry": {
             "task": "app.infrastructure.tasks.check_subscription_notifications",
@@ -26,9 +27,12 @@ celery_app.conf.update(
         },
         "send-daily-card-push": {
             "task": "app.infrastructure.tasks.send_daily_card_push",
-            "schedule": crontab(hour=6, minute=0),
+            "schedule": crontab(hour=9, minute=0),
         },
     },
 )
 
 celery_app.autodiscover_tasks(["app.infrastructure"])
+
+# Ensure beat/worker always register task modules.
+import app.infrastructure.tasks  # noqa: E402, F401

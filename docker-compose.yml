@@ -67,6 +67,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+    restart: unless-stopped
     command: celery -A app.infrastructure.celery_app worker --loglevel=info
 
   celery_beat:
@@ -87,7 +88,9 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: celery -A app.infrastructure.celery_app beat --loglevel=info
+      - celery_beat_data:/var/lib/celery
+    restart: unless-stopped
+    command: celery -A app.infrastructure.celery_app beat --loglevel=info --schedule /var/lib/celery/celerybeat-schedule
 
   bot:
     build:
@@ -125,3 +128,4 @@ volumes:
   postgres_data:
   redis_data:
   frontend_node_modules:
+  celery_beat_data:
