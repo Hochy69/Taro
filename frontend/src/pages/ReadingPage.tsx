@@ -6,7 +6,7 @@ import { useAppNavigation } from '@/hooks/useAppNavigation'
 import { Button, Skeleton } from '@/components/ui'
 import { TarotCardVisual } from '@/components/tarot/TarotCardVisual'
 import { api, type AIResult, type Spread, type SpreadCard } from '@/api/client'
-import { haptic, shareTelegramMessage, shareText } from '@/lib/telegram'
+import { haptic, shareContent } from '@/lib/telegram'
 
 function buildShareText(spread: Spread, result: AIResult): string {
   const cards = spread.cards
@@ -124,21 +124,28 @@ export function ReadingPage() {
     if (!currentSpread || !aiResult || shareBusy) return
     setShareBusy(true)
     haptic('medium')
+    const text = buildShareText(currentSpread, aiResult)
     try {
       const { share_message_id } = await api.prepareSpreadShare(currentSpread.id)
-      const sent = await shareTelegramMessage(share_message_id)
-      if (sent) {
-        haptic('success')
+      const result = await shareContent(text, { preparedMessageId: share_message_id })
+      if (result === 'picker') haptic('success')
+      else if (result === 'copied') {
+        window.Telegram?.WebApp?.showAlert?.(
+          'Не удалось открыть выбор чата. Текст скопирован — вставьте вручную.',
+        )
       } else {
-        const copied = await shareText(buildShareText(currentSpread, aiResult))
-        if (copied === 'copied') haptic('success')
-        else haptic('error')
+        haptic('error')
+        window.Telegram?.WebApp?.showAlert?.('Не удалось поделиться. Попробуйте ещё раз.')
       }
     } catch (e) {
       console.error(e)
-      const copied = await shareText(buildShareText(currentSpread, aiResult))
-      if (copied === 'copied') haptic('success')
-      else {
+      const result = await shareContent(text)
+      if (result === 'picker') haptic('success')
+      else if (result === 'copied') {
+        window.Telegram?.WebApp?.showAlert?.(
+          'Не удалось открыть выбор чата. Текст скопирован — вставьте вручную.',
+        )
+      } else {
         haptic('error')
         window.Telegram?.WebApp?.showAlert?.('Не удалось поделиться. Попробуйте ещё раз.')
       }

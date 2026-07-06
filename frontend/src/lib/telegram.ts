@@ -103,6 +103,20 @@ export function openInvoice(stars: number, title: string) {
   }
 }
 
+/** Open Telegram's native "choose chat" share sheet (Mini App). */
+export function openTelegramSharePicker(options: { text: string; url?: string }): boolean {
+  const tg = window.Telegram?.WebApp
+  const text = options.text.trim()
+  const url = options.url?.trim()
+  if (!tg?.openTelegramLink || (!text && !url)) return false
+
+  const params: string[] = []
+  if (url) params.push(`url=${encodeURIComponent(url)}`)
+  if (text) params.push(`text=${encodeURIComponent(text)}`)
+  tg.openTelegramLink(`https://t.me/share/url?${params.join('&')}`)
+  return true
+}
+
 /** Native Telegram Mini App share (chat picker inside the app). */
 export function shareTelegramMessage(preparedMessageId: string): Promise<boolean> {
   const tg = window.Telegram?.WebApp
@@ -114,20 +128,53 @@ export function shareTelegramMessage(preparedMessageId: string): Promise<boolean
   })
 }
 
-/** Copy text to clipboard with a Telegram alert (no external links). */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Share via Telegram chat picker (shareMessage or t.me/share/url).
+ * Clipboard is only a last resort outside Telegram.
+ */
+export async function shareContent(
+  text: string,
+  options?: { url?: string; preparedMessageId?: string },
+): Promise<'picker' | 'copied' | 'failed'> {
+  const trimmed = text.trim()
+  if (!trimmed && !options?.url?.trim()) return 'failed'
+
+  if (options?.preparedMessageId) {
+    const sent = await shareTelegramMessage(options.preparedMessageId)
+    if (sent) return 'picker'
+  }
+
+  if (openTelegramSharePicker({ text: trimmed, url: options?.url })) {
+    return 'picker'
+  }
+
+  if (trimmed && (await copyToClipboard(trimmed))) {
+    return 'copied'
+  }
+  return 'failed'
+}
+
+/** Copy text to clipboard with a Telegram alert (for explicit "Copy" buttons). */
 export async function shareText(text: string): Promise<'copied' | 'failed'> {
   const trimmed = text.trim()
   if (!trimmed) return 'failed'
 
-  try {
-    await navigator.clipboard.writeText(trimmed)
+  if (await copyToClipboard(trimmed)) {
     window.Telegram?.WebApp?.showAlert?.(
       'Текст скопирован. Откройте чат и вставьте сообщение (долгое нажатие → Вставить).',
     )
     return 'copied'
-  } catch {
-    return 'failed'
   }
+  return 'failed'
 }
 
 declare global {

@@ -16,7 +16,7 @@ import { applyDiscount, getStoredPromoPercent } from '@/lib/promo'
 
 import { openStarsPayment } from '@/lib/payments'
 
-import { haptic, shareText } from '@/lib/telegram'
+import { haptic, shareContent, shareText } from '@/lib/telegram'
 
 
 
@@ -207,19 +207,23 @@ export function SubscriptionPage() {
 
 
   const shareReferralLink = async () => {
-
     if (!referral?.link) return
-
     haptic('medium')
-
-    const text = `🔮 Присоединяйся к Миру Таро!\n\n${referral.link}\n\nЗарегистрируйся по ссылке — и мы оба получим бесплатный расклад в подарок.`
-
-    const copied = await shareText(text)
-
-    if (copied === 'copied') haptic('success')
-
-    else setFeedback({ kind: 'error', text: 'Не удалось скопировать ссылку.' })
-
+    const text =
+      '🔮 Присоединяйся к Миру Таро!\n\nЗарегистрируйся по моей ссылке — мы оба получим бесплатный расклад в подарок.'
+    const result = await shareContent(text, { url: referral.link })
+    if (result === 'picker') {
+      haptic('success')
+      return
+    }
+    if (result === 'copied') {
+      setFeedback({
+        kind: 'info',
+        text: 'Не удалось открыть выбор чата. Текст со ссылкой скопирован — вставьте вручную.',
+      })
+      return
+    }
+    setFeedback({ kind: 'error', text: 'Не удалось поделиться. Попробуйте ещё раз.' })
   }
 
 
