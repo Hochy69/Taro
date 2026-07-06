@@ -50,6 +50,20 @@ def webapp_keyboard(url: str | None = None) -> InlineKeyboardMarkup:
     )
 
 
+def compatibility_keyboard() -> InlineKeyboardMarkup:
+    target = f"{get_webapp_url().rstrip('/')}/compatibility"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="💕 Что между вами",
+                    web_app=WebAppInfo(url=target),
+                )
+            ]
+        ]
+    )
+
+
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject):
     name = message.from_user.first_name or "друг"
@@ -76,7 +90,7 @@ async def cmd_start(message: Message, command: CommandObject):
         f"{referral_note}\n\n"
         "Нажмите кнопку ниже, чтобы начать расклад 👇"
         f"{'' if reachable else _unreachable_note()}",
-        reply_markup=webapp_keyboard(),
+        reply_markup=compatibility_keyboard(),
         parse_mode="HTML",
     )
 
@@ -154,7 +168,7 @@ async def cmd_premium(message: Message):
         f"🃏 Разовый расклад — {p.price_single_spread} ⭐️\n"
         f"📦 3 расклада — {p.price_spread_pack_3} ⭐️\n"
         f"📦 5 раскладов — {p.price_spread_pack_5} ⭐️\n"
-        f"💕 Проверка на пару — {p.price_compatibility} ⭐️\n"
+        f"💕 Что между вами — {p.price_compatibility} ⭐️\n"
         f"📅 1 месяц — {p.price_subscription_1m} ⭐️\n"
         f"📅 3 месяца — {p.price_subscription_3m} ⭐️\n"
         f"📅 6 месяцев — {p.price_subscription_6m} ⭐️\n\n"

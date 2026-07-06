@@ -271,7 +271,7 @@ export function SubscriptionPage() {
 
           subscription: '✅ Подписка активирована! Открыт полный доступ.',
 
-          compatibility: '✅ Проверка на пару доступна на главном экране.',
+          compatibility: '✅ «Что между вами» доступно на главном экране.',
 
           love_bundle: '✅ Пакет «Любовь» активирован!',
 
@@ -592,7 +592,7 @@ export function SubscriptionPage() {
 
           <div className="min-w-0 flex-1">
 
-            <p className="font-semibold">💕 Проверка на пару</p>
+            <p className="font-semibold">💕 Что между вами</p>
 
             <p className="text-white/50 text-sm break-words">
 
@@ -738,7 +738,7 @@ export function SubscriptionPage() {
 
           <h2 className="text-xl font-bold mt-2">Полный доступ</h2>
 
-          <p className="text-white/60 text-sm mt-1">15 раскладов в сутки • Вся история • Проверка на пару бесплатно</p>
+          <p className="text-white/60 text-sm mt-1">15 раскладов в сутки • Вся история • «Что между вами» бесплатно</p>
 
         </GlassCard>
 

@@ -108,7 +108,7 @@ export function NatalChartPage() {
             goTo('compatibility')
           }}
         >
-          Проверка на пару 💕
+          Что между вами 💕
         </Button>
         <Button variant="secondary" onClick={() => goTo('portrait')}>
           Мой портрет

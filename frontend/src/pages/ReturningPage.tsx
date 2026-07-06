@@ -109,7 +109,7 @@ export function ReturningPage() {
                 goTo('compatibility')
               }}
             >
-              Проверка на пару 💕
+              Что между вами 💕
             </Button>
             <Button
               variant="secondary"
