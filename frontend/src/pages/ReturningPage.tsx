@@ -70,7 +70,7 @@ export function ReturningPage() {
                 goTo('compatibility')
               }}
             >
-              Проверить пару 💕
+              Что между вами 💕
             </Button>
             <Button onClick={continueTopic}>
               Продолжить эту тему

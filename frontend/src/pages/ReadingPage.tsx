@@ -200,9 +200,8 @@ export function ReadingPage() {
     }
   }
 
-  const compatLabel = hasCompatAccess
-    ? 'Проверить пару'
-    : `Проверить пару — ${compatDisplayPrice} ⭐`
+  const compatLabel =
+    compatCredits > 0 ? `${compatCredits} проверок` : `${compatDisplayPrice} ⭐`
 
   return (
     <div className={`page-shell ${isPremiumUser ? 'pb-52' : 'pb-72'}`}>

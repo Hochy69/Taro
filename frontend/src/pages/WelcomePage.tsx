@@ -52,6 +52,9 @@ export function WelcomePage() {
   const hasCompatAccess = isPremium || compatCredits > 0
   const lastTopic = lastCategory ? CATEGORY_NAMES[lastCategory] || lastCategory : null
 
+  const loveCategory = categories?.find((c) => c.slug === 'love')
+  const otherCategories = categories?.filter((c) => c.slug !== 'love')
+
   const handleSelect = (category: NonNullable<typeof categories>[0]) => {
     haptic('medium')
     setCategory(category)
@@ -97,17 +100,10 @@ export function WelcomePage() {
     }
   }
 
-  const compatSublabel = isPremium
-    ? 'Проверить бесплатно'
-    : compatCredits > 0
-      ? `Проверить (${compatCredits})`
-      : `Проверить — ${compatDisplayPrice} ⭐`
+  const compatSublabel =
+    compatCredits > 0 ? `${compatCredits} проверок` : `${compatDisplayPrice} ⭐`
 
   const spreadPrice = pricing?.single_spread ?? 69
-  const sortedCategories = categories
-    ?.slice()
-    .sort((a, b) => (a.slug === 'love' ? -1 : b.slug === 'love' ? 1 : 0))
-
   const refillQuestionnaire = useQuestionnaireRefill()
 
   return (
@@ -133,7 +129,7 @@ export function WelcomePage() {
         <p className="text-white/60 text-base sm:text-lg px-2 break-words">
           {isReturning && lastTopic
             ? <>Последняя тема: <span className="text-tarot-gold">{lastTopic}</span></>
-            : 'Сначала — про отношения: проверьте пару или сделайте расклад на любовь'}
+            : 'Выберите сферу жизни, которая волнует вас сейчас'}
         </p>
       </motion.div>
 
@@ -165,31 +161,6 @@ export function WelcomePage() {
         </Button>
       </motion.div>
 
-      {cardOfDay && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md mx-auto mb-6"
-        >
-          <GlassCard onClick={() => goTo('cardOfDay')}>
-            <div className="flex items-center gap-4">
-              <TarotCardVisual
-                slug={cardOfDay.card.slug}
-                name={cardOfDay.card.name}
-                imageUrl={cardOfDay.card.image_url}
-                isReversed={cardOfDay.card.is_reversed}
-                size="sm"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-tarot-gold text-sm font-semibold mb-1">Карта дня</p>
-                <p className="text-white font-medium truncate">{cardOfDay.card.name}</p>
-                <p className="text-white/50 text-sm line-clamp-2 mt-1">{cardOfDay.meaning}</p>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
-      )}
-
       <div className="grid grid-cols-2 gap-3 max-w-md mx-auto w-full min-w-0">
         <GlassCard onClick={() => goTo('portrait')} delay={0.02}>
           <div className="text-center py-2 min-w-0">
@@ -197,13 +168,51 @@ export function WelcomePage() {
             <span className="font-semibold text-white text-sm break-words">Мой портрет</span>
           </div>
         </GlassCard>
+
         <GlassCard onClick={() => goTo('cardOfDay')} delay={0.04}>
-          <div className="text-center py-2 min-w-0">
-            <span className="text-3xl block mb-2">🃏</span>
-            <span className="font-semibold text-white text-sm break-words">Карта дня</span>
-          </div>
+          {cardOfDay ? (
+            <div className="flex items-center gap-3 min-w-0 py-1">
+              <TarotCardVisual
+                slug={cardOfDay.card.slug}
+                name={cardOfDay.card.name}
+                imageUrl={cardOfDay.card.image_url}
+                isReversed={cardOfDay.card.is_reversed}
+                size="sm"
+              />
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-tarot-gold text-xs font-semibold mb-0.5">Карта дня</p>
+                <p className="text-white text-sm font-medium truncate">{cardOfDay.card.name}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-2 min-w-0">
+              <span className="text-3xl block mb-2">🃏</span>
+              <span className="font-semibold text-white text-sm break-words">Карта дня</span>
+            </div>
+          )}
         </GlassCard>
-        <GlassCard onClick={() => goTo('natalChart')} delay={0.06}>
+
+        {loveCategory && (
+          <GlassCard
+            onClick={() => handleSelect(loveCategory)}
+            delay={0.06}
+            className="col-span-2 border-pink-400/35 bg-gradient-to-r from-pink-500/10 to-transparent"
+          >
+            <div className="flex items-center justify-center gap-4 py-3 min-w-0">
+              <span className="text-4xl sm:text-5xl shrink-0">{loveCategory.emoji}</span>
+              <div className="text-left min-w-0">
+                <span className="font-semibold text-white text-base sm:text-lg break-words leading-tight block">
+                  Любовь
+                </span>
+                <span className="block text-pink-200/80 text-sm mt-1">
+                  Расклад на отношения, чувства и пару
+                </span>
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
+        <GlassCard onClick={() => goTo('natalChart')} delay={0.08}>
           <div className="text-center py-2 min-w-0">
             <span className="text-3xl block mb-2">🌌</span>
             <span className="font-semibold text-white text-sm break-words">Натальная карта</span>
@@ -211,27 +220,19 @@ export function WelcomePage() {
         </GlassCard>
 
         {isLoading
-          ? Array.from({ length: 6 }).map((_, i) => (
-              <div key={`sk-${i}`} className="h-28 skeleton rounded-2xl" />
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={`sk-${i}`} className="col-span-2 h-28 skeleton rounded-2xl" />
             ))
-          : sortedCategories?.map((cat, i) => (
-              <GlassCard
-                key={cat.slug}
-                onClick={() => handleSelect(cat)}
-                delay={0.1 + i * 0.04}
-                className={cat.slug === 'love' ? 'border-pink-400/30' : undefined}
-              >
-                <div className="text-center py-2 min-w-0">
-                  <span className="text-3xl sm:text-4xl block mb-2">{cat.emoji}</span>
-                  <span className="font-semibold text-white text-sm break-words leading-tight">
-                    {cat.slug === 'love' ? 'Расклад на любовь' : cat.name}
-                  </span>
-                  {cat.slug === 'love' && (
-                    <span className="block text-pink-200/80 text-[11px] mt-1">Самая популярная тема</span>
-                  )}
-                </div>
-              </GlassCard>
-            ))}
+          : otherCategories?.map((cat, i) => (
+                <GlassCard key={cat.slug} onClick={() => handleSelect(cat)} delay={0.12 + i * 0.04}>
+                  <div className="text-center py-2 min-w-0">
+                    <span className="text-3xl sm:text-4xl block mb-2">{cat.emoji}</span>
+                    <span className="font-semibold text-white text-sm break-words leading-tight">
+                      {cat.name}
+                    </span>
+                  </div>
+                </GlassCard>
+              ))}
       </div>
     </div>
   )

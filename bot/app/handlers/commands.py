@@ -56,7 +56,7 @@ def love_offer_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="💕 Проверить пару",
+                    text="💕 Что между вами",
                     web_app=WebAppInfo(url=f"{base}/compatibility"),
                 )
             ],
@@ -91,12 +91,10 @@ async def cmd_start(message: Message, command: CommandObject):
 
     await message.answer(
         f"✨ <b>Добро пожаловать, {name}!</b>\n\n"
-        "💕 <b>Проверка пары — 99 ⭐</b>\n"
-        "Узнайте, насколько вы подходите друг другу — сильные стороны союза и зоны риска.\n\n"
-        "🔮 <b>Расклад на любовь — от 69 ⭐</b>\n"
-        "Карты подскажут, что происходит в отношениях и что делать дальше."
+        "Я — ваш проводник в Мир Таро. Карты готовы раскрыть тайны "
+        "любви, карьеры, финансов и предназначения."
         f"{referral_note}\n\n"
-        "Выберите, с чего начать 👇"
+        "Нажмите кнопку ниже, чтобы начать расклад 👇"
         f"{'' if reachable else _unreachable_note()}",
         reply_markup=love_offer_keyboard(),
         parse_mode="HTML",
@@ -175,7 +173,7 @@ async def cmd_love(message: Message):
     reachable = await _webapp_is_reachable(webapp_url)
     p = settings
     await message.answer(
-        "💕 <b>Проверка пары</b>\n\n"
+        "💕 <b>Что между вами</b>\n\n"
         "Узнайте, насколько вы подходите друг другу:\n"
         "• сильные стороны союза\n"
         "• зоны риска и напряжения\n"
@@ -196,7 +194,7 @@ async def cmd_premium(message: Message):
     bundle_final = max(1, round(bundle_base * 0.8))
     await message.answer(
         "💕 <b>Любовь и отношения</b>\n\n"
-        f"💕 Проверка пары — {p.price_compatibility} ⭐\n"
+        f"💕 Что между вами — {p.price_compatibility} ⭐\n"
         f"💞 Пакет «Любовь» — {bundle_final} ⭐ (проверка + расклад)\n"
         f"🔮 Доп. расклад — {p.price_single_spread} ⭐\n\n"
         "⭐️ <b>Premium подписка</b>\n\n"

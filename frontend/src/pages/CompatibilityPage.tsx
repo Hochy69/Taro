@@ -147,7 +147,7 @@ export function CompatibilityPage() {
     <div className="page-shell">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8 px-2">
         <div className="text-5xl mb-3">💕</div>
-        <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">Проверка пары</h1>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">Что между вами</h1>
         <p className="text-white/60 text-sm break-words">Что между вами — сильные стороны союза и зоны риска</p>
         <p className="text-white/45 text-xs mt-2 px-4 break-words">
           Узнайте, насколько вы подходите друг другу, прежде чем принимать важные решения в отношениях
@@ -166,7 +166,7 @@ export function CompatibilityPage() {
           <GlassCard className="border-pink-400/25">
             <p className="text-tarot-gold font-semibold mb-1">💞 Пакет «Любовь» — выгоднее</p>
             <p className="text-white/70 text-sm mb-3 break-words">
-              Проверка пары + расклад на вашу ситуацию со скидкой {pricing.love_bundle.savings_percent}%
+              Что между вами + расклад на вашу ситуацию со скидкой {pricing.love_bundle.savings_percent}%
             </p>
             <Button onClick={buyLoveBundle} disabled={buyingBundle}>
               {buyingBundle

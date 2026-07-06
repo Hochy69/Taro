@@ -464,7 +464,7 @@ export function SubscriptionPage() {
 
 
 
-        <SectionTitle>💕 Проверка пары — главный оффер</SectionTitle>
+        <SectionTitle>💕 Что между вами</SectionTitle>
 
 
 
@@ -500,7 +500,7 @@ export function SubscriptionPage() {
 
               <div className="min-w-0 flex-1">
 
-                <p className="font-semibold">💕 Проверка пары</p>
+                <p className="font-semibold">💕 Что между вами</p>
 
                 <p className="text-white/50 text-sm break-words">
 

@@ -41,7 +41,7 @@ export function LoveOfferHero({
         <span className={compact ? 'text-3xl shrink-0' : 'text-4xl block'}>💕</span>
         <div className={compact ? 'min-w-0 flex-1 text-left' : ''}>
           <h2 className={`font-bold text-white ${compact ? 'text-base' : 'text-xl mt-2'}`}>
-            Проверка пары
+            Что между вами
           </h2>
           <p className={`text-white/60 ${compact ? 'text-xs mt-0.5' : 'text-sm mt-2 px-1'}`}>
             Насколько вы подходите друг другу — сильные стороны союза и зоны риска до важного
