@@ -121,6 +121,21 @@ export function WelcomePage() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md mx-auto mb-6"
       >
+        <Button
+          onClick={() => {
+            haptic('medium')
+            goTo('compatibility')
+          }}
+        >
+          💕 Проверка на пару
+        </Button>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md mx-auto mb-6"
+      >
         <Button variant="secondary" onClick={() => refillQuestionnaire(categories)}>
           📝 Заполнить анкету заново
         </Button>
@@ -161,7 +176,7 @@ export function WelcomePage() {
         <GlassCard onClick={handleCompatibility} delay={0.04}>
           <div className="text-center py-2 min-w-0">
             <span className="text-3xl block mb-2">💕</span>
-            <span className="font-semibold text-white text-sm break-words">Совместимость</span>
+            <span className="font-semibold text-white text-sm break-words">Проверка на пару</span>
             <span className="block text-tarot-gold text-xs mt-1 font-medium break-words">{compatSublabel}</span>
             {!hasCompatAccess && (
               <span className="block text-white/45 text-[11px] mt-1 leading-tight break-words">

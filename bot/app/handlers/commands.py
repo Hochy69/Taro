@@ -154,7 +154,7 @@ async def cmd_premium(message: Message):
         f"🃏 Разовый расклад — {p.price_single_spread} ⭐️\n"
         f"📦 3 расклада — {p.price_spread_pack_3} ⭐️\n"
         f"📦 5 раскладов — {p.price_spread_pack_5} ⭐️\n"
-        f"💕 Совместимость — {p.price_compatibility} ⭐️\n"
+        f"💕 Проверка на пару — {p.price_compatibility} ⭐️\n"
         f"📅 1 месяц — {p.price_subscription_1m} ⭐️\n"
         f"📅 3 месяца — {p.price_subscription_3m} ⭐️\n"
         f"📅 6 месяцев — {p.price_subscription_6m} ⭐️\n\n"
