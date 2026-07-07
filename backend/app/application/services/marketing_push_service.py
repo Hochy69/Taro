@@ -127,6 +127,12 @@ def schedule_compat_upsell(user_id: int) -> None:
     send_compat_paid_upsell.apply_async(args=[user_id], countdown=5 * 60)
 
 
+def schedule_spread_milestone_push(spread_id: int) -> None:
+    from app.infrastructure.tasks import send_spread_milestone_push
+
+    send_spread_milestone_push.apply_async(args=[spread_id], countdown=2)
+
+
 async def on_spread_interpreted(session: AsyncSession, spread_id: int) -> None:
     from app.application.services.spread_service import SpreadService
 

@@ -471,6 +471,22 @@ async def _send_compat_paid_upsell(user_id: int):
         await session.commit()
 
 
+@celery_app.task(name="app.infrastructure.tasks.send_spread_milestone_push")
+def send_spread_milestone_push(spread_id: int):
+    run_async(_send_spread_milestone_push(spread_id))
+
+
+async def _send_spread_milestone_push(spread_id: int):
+    from app.application.services.marketing_push_service import on_spread_interpreted
+
+    async with async_session() as session:
+        try:
+            await on_spread_interpreted(session, spread_id)
+            await session.commit()
+        except Exception:
+            logger.exception("Spread milestone push failed for spread_id=%s", spread_id)
+
+
 @celery_app.task(name="app.infrastructure.tasks.send_weekly_referral_push")
 def send_weekly_referral_push():
     run_async(_send_weekly_referral_push())

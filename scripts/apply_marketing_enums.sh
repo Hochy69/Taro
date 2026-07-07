@@ -9,15 +9,15 @@ from sqlalchemy import text
 from app.infrastructure.database.session import engine
 
 _PATCHES = [
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'start_no_webapp'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'spread_first'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'spread_second'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'spread_third'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'free_limit_hit'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'free_limit_followup'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'compat_view_abandoned'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'compat_paid_upsell'",
-    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'weekly_referral'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'START_NO_WEBAPP'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'SPREAD_FIRST'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'SPREAD_SECOND'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'SPREAD_THIRD'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'FREE_LIMIT_HIT'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'FREE_LIMIT_FOLLOWUP'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'COMPAT_VIEW_ABANDONED'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'COMPAT_PAID_UPSELL'",
+    "ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'WEEKLY_REFERRAL'",
 ]
 
 

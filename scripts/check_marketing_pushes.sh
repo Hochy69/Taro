@@ -16,11 +16,11 @@ echo "--- Notification enum values ---"
 docker compose exec -T backend python <<'PY'
 from app.infrastructure.database.models import NotificationType
 required = {
-    "start_no_webapp", "spread_first", "spread_second", "spread_third",
-    "free_limit_hit", "free_limit_followup", "compat_view_abandoned",
-    "compat_paid_upsell", "weekly_referral",
+    "START_NO_WEBAPP", "SPREAD_FIRST", "SPREAD_SECOND", "SPREAD_THIRD",
+    "FREE_LIMIT_HIT", "FREE_LIMIT_FOLLOWUP", "COMPAT_VIEW_ABANDONED",
+    "COMPAT_PAID_UPSELL", "WEEKLY_REFERRAL",
 }
-values = {t.value for t in NotificationType}
+values = {t.name for t in NotificationType}
 missing = required - values
 assert not missing, f"missing enum values: {missing}"
 print("enum OK", len(required), "marketing types")

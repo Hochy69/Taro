@@ -48,8 +48,8 @@ from app.application.services.natal_chart_service import build_natal_chart
 from app.application.services.marketing_push_service import (
     on_compatibility_paid,
     on_free_limit_blocked,
-    on_spread_interpreted,
     schedule_compat_abandon_reminder,
+    schedule_spread_milestone_push,
     schedule_start_reminder,
 )
 from app.application.services.marketing_service import (
@@ -529,8 +529,8 @@ async def interpret_spread(spread_id: int, user: RequireTermsUser, db: DbSession
     service = SpreadService(db)
     try:
         ai_result = await service.generate_interpretation(spread_id)
-        await on_spread_interpreted(db, spread_id)
         await db.commit()
+        schedule_spread_milestone_push(spread_id)
         return AIResultResponse(
             response_text=ai_result.response_text,
             past=ai_result.past_interpretation,
@@ -541,6 +541,7 @@ async def interpret_spread(spread_id: int, user: RequireTermsUser, db: DbSession
             generation_time_ms=ai_result.generation_time_ms,
         )
     except Exception as e:
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"AI generation failed: {e}")
 
 

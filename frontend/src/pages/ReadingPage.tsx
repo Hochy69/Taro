@@ -64,6 +64,16 @@ export function ReadingPage() {
         haptic('success')
       } catch (e) {
         if (cancelled) return
+        try {
+          const spread = await api.getSpread(currentSpread.id)
+          if (spread.ai_result) {
+            setAIResult(spread.ai_result)
+            haptic('success')
+            return
+          }
+        } catch {
+          // ignore recovery errors
+        }
         haptic('error')
         console.error(e)
         setFailed(true)

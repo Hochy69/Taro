@@ -75,6 +75,14 @@ class NotificationType(str, enum.Enum):
     WEEKLY_REFERRAL = "weekly_referral"
 
 
+def _notification_type_enum():
+    """PostgreSQL stores enum member names (CARD_OF_DAY), not .value strings."""
+    return Enum(
+        NotificationType,
+        values_callable=lambda members: [m.name for m in members],
+    )
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -358,7 +366,7 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    notification_type: Mapped[NotificationType] = mapped_column(Enum(NotificationType))
+    notification_type: Mapped[NotificationType] = mapped_column(_notification_type_enum())
     message: Mapped[str] = mapped_column(Text)
     is_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

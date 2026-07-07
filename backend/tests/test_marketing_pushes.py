@@ -18,3 +18,15 @@ def test_free_limit_exhausted_includes_prices():
 def test_after_first_spread_mentions_compat():
     assert "Что между вами" in copy.after_first_spread_message()
     assert "2 из 3" in copy.after_first_spread_message()
+
+
+def test_notification_enum_names_match_postgres():
+    from app.infrastructure.database.models import NotificationType
+
+    for member in (
+        NotificationType.CARD_OF_DAY,
+        NotificationType.SPREAD_SECOND,
+        NotificationType.FREE_LIMIT_HIT,
+    ):
+        assert member.name == member.name.upper()
+        assert member.name != member.value

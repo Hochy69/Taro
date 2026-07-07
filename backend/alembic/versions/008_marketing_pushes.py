@@ -8,15 +8,15 @@ branch_labels = None
 depends_on = None
 
 _NEW_VALUES = [
-    "start_no_webapp",
-    "spread_first",
-    "spread_second",
-    "spread_third",
-    "free_limit_hit",
-    "free_limit_followup",
-    "compat_view_abandoned",
-    "compat_paid_upsell",
-    "weekly_referral",
+    "START_NO_WEBAPP",
+    "SPREAD_FIRST",
+    "SPREAD_SECOND",
+    "SPREAD_THIRD",
+    "FREE_LIMIT_HIT",
+    "FREE_LIMIT_FOLLOWUP",
+    "COMPAT_VIEW_ABANDONED",
+    "COMPAT_PAID_UPSELL",
+    "WEEKLY_REFERRAL",
 ]
 
 
