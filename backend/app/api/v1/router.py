@@ -47,8 +47,8 @@ from app.application.services.lunar_service import render_lunar_birth_text
 from app.application.services.natal_chart_service import build_natal_chart
 from app.application.services.marketing_push_service import (
     on_compatibility_paid,
-    on_free_limit_blocked,
     schedule_compat_abandon_reminder,
+    schedule_free_limit_hit_push,
     schedule_spread_milestone_push,
     schedule_start_reminder,
 )
@@ -504,8 +504,7 @@ async def create_spread(body: CreateSpreadRequest, user: RequireTermsUser, db: D
 
         return _spread_to_response(spread)
     except PermissionError:
-        await on_free_limit_blocked(db, user)
-        await db.commit()
+        schedule_free_limit_hit_push(user.id)
         raise HTTPException(
             status_code=403,
             detail=(

@@ -21,7 +21,10 @@ def test_after_first_spread_mentions_compat():
 
 
 def test_notification_enum_names_match_postgres():
-    from app.infrastructure.database.models import NotificationType
+    from app.infrastructure.database.models import NotificationType, _notification_type_enum
+
+    col = _notification_type_enum()
+    assert col.enums == [m.name for m in NotificationType]
 
     for member in (
         NotificationType.CARD_OF_DAY,

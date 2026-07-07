@@ -371,7 +371,7 @@ async def _send_compat_abandon_reminder(user_id: int, viewed_at_iso: str):
             return
 
         if await _notification_sent_since(
-            session, user.id, NotificationType.COMPAT_VIEW_ABANDONED, viewed_at
+            session, user.id, NotificationType.COMPAT_VIEW_ABANDONED, now - timedelta(days=1)
         ):
             return
 
@@ -469,6 +469,28 @@ async def _send_compat_paid_upsell(user_id: int):
             )
         )
         await session.commit()
+
+
+@celery_app.task(name="app.infrastructure.tasks.send_free_limit_hit_push")
+def send_free_limit_hit_push(user_id: int):
+    run_async(_send_free_limit_hit_push(user_id))
+
+
+async def _send_free_limit_hit_push(user_id: int):
+    from app.application.services.marketing_push_service import on_free_limit_blocked
+
+    async with async_session() as session:
+        from sqlalchemy import select
+        from app.infrastructure.database.models import User
+
+        user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+        if not user:
+            return
+        try:
+            await on_free_limit_blocked(session, user)
+            await session.commit()
+        except Exception:
+            logger.exception("Free limit hit push failed for user_id=%s", user_id)
 
 
 @celery_app.task(name="app.infrastructure.tasks.send_spread_milestone_push")

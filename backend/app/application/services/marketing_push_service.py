@@ -99,6 +99,7 @@ def schedule_start_reminder(telegram_id: int) -> None:
     send_start_no_webapp_reminder.apply_async(
         args=[telegram_id, started_at],
         countdown=30 * 60,
+        task_id=f"start_no_webapp_{telegram_id}",
     )
 
 
@@ -109,6 +110,7 @@ def schedule_compat_abandon_reminder(user_id: int) -> None:
     send_compat_abandon_reminder.apply_async(
         args=[user_id, viewed_at],
         countdown=2 * 60 * 60,
+        task_id=f"compat_abandon_{user_id}",
     )
 
 
@@ -118,19 +120,38 @@ def schedule_limit_followup(user_id: int, days_until_free: int) -> None:
     send_free_limit_followup.apply_async(
         args=[user_id, days_until_free],
         countdown=24 * 60 * 60,
+        task_id=f"free_limit_followup_{user_id}",
     )
 
 
 def schedule_compat_upsell(user_id: int) -> None:
     from app.infrastructure.tasks import send_compat_paid_upsell
 
-    send_compat_paid_upsell.apply_async(args=[user_id], countdown=5 * 60)
+    send_compat_paid_upsell.apply_async(
+        args=[user_id],
+        countdown=5 * 60,
+        task_id=f"compat_upsell_{user_id}",
+    )
 
 
 def schedule_spread_milestone_push(spread_id: int) -> None:
     from app.infrastructure.tasks import send_spread_milestone_push
 
-    send_spread_milestone_push.apply_async(args=[spread_id], countdown=2)
+    send_spread_milestone_push.apply_async(
+        args=[spread_id],
+        countdown=2,
+        task_id=f"spread_milestone_{spread_id}",
+    )
+
+
+def schedule_free_limit_hit_push(user_id: int) -> None:
+    from app.infrastructure.tasks import send_free_limit_hit_push
+
+    send_free_limit_hit_push.apply_async(
+        args=[user_id],
+        countdown=2,
+        task_id=f"free_limit_hit_{user_id}",
+    )
 
 
 async def on_spread_interpreted(session: AsyncSession, spread_id: int) -> None:
