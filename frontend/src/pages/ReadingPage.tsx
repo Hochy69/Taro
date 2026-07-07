@@ -7,6 +7,7 @@ import { Button, Skeleton } from '@/components/ui'
 import { TarotCardVisual } from '@/components/tarot/TarotCardVisual'
 import { api, type AIResult, type Spread, type SpreadCard } from '@/api/client'
 import { haptic, shareContent } from '@/lib/telegram'
+import { getSingleSpreadCheckoutPrice } from '@/lib/pricing'
 
 function buildShareText(spread: Spread, result: AIResult): string {
   const cards = spread.cards
@@ -43,7 +44,8 @@ export function ReadingPage() {
   const { data: limits } = useQuery({ queryKey: ['limits'], queryFn: api.getLimits })
   const { data: pricing } = useQuery({ queryKey: ['pricing'], queryFn: api.getPricing })
   const isPremiumUser = Boolean(limits?.is_premium || limits?.is_admin)
-  const singleSpreadPrice = pricing?.single_spread ?? 59
+  const singleBase = pricing?.single_spread ?? 59
+  const singleSpreadOffer = getSingleSpreadCheckoutPrice(limits, singleBase)
 
   useEffect(() => {
     if (!currentSpread) {
@@ -238,7 +240,9 @@ export function ReadingPage() {
               </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="secondary" onClick={() => goTo('subscription')}>
-                  ⭐️ Ещё расклад ({singleSpreadPrice})
+                  {singleSpreadOffer.hasDiscount
+                    ? `⭐️ Ещё расклад — ${singleSpreadOffer.final} ⭐ (−${singleSpreadOffer.discountPercent}%)`
+                    : `⭐️ Ещё расклад — ${singleSpreadOffer.final} ⭐`}
                 </Button>
                 <Button variant="secondary" onClick={handleShare} disabled={shareBusy}>
                   {shareBusy ? '…' : 'Поделиться'}
