@@ -1,7 +1,10 @@
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
+from celery.signals import worker_process_init, worker_process_shutdown
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -16,7 +19,7 @@ from app.infrastructure.database.models import (
     SubscriptionStatus,
     User,
 )
-from app.infrastructure.database.session import async_session
+from app.infrastructure.database.session import async_session, engine
 from app.infrastructure.telegram_notify import (
     escape_telegram_html,
     send_telegram_message,
@@ -26,13 +29,36 @@ from app.infrastructure.telegram_notify import (
 
 logger = logging.getLogger(__name__)
 
+MSK = ZoneInfo("Europe/Moscow")
 
-def run_async(coro):
-    loop = asyncio.new_event_loop()
+
+@worker_process_init.connect
+def _init_celery_worker_process(**_kwargs) -> None:
+    """One event loop per Celery child process (prefork pool)."""
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
+
+@worker_process_shutdown.connect
+def _shutdown_celery_worker_process(**_kwargs) -> None:
+    loop = asyncio.get_event_loop()
+    if loop.is_closed():
+        return
     try:
-        return loop.run_until_complete(coro)
+        loop.run_until_complete(engine.dispose())
+    except Exception:
+        logger.exception("Failed to dispose SQLAlchemy engine on worker shutdown")
     finally:
         loop.close()
+        asyncio.set_event_loop(None)
+
+
+def run_async(coro):
+    """Run async Celery task code on the worker's persistent event loop."""
+    loop = asyncio.get_event_loop()
+    if loop.is_closed():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
 
 
 def utc_day_bounds(day: date) -> tuple[datetime, datetime]:
@@ -41,13 +67,25 @@ def utc_day_bounds(day: date) -> tuple[datetime, datetime]:
     return start, end
 
 
+def msk_day_bounds(day: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(day, time.min, tzinfo=MSK)
+    end = start + timedelta(days=1)
+    return start.astimezone(timezone.utc), end.astimezone(timezone.utc)
+
+
+def msk_today() -> date:
+    return datetime.now(MSK).date()
+
+
 async def _notification_already_sent(
     session,
     user_id: int,
     ntype: NotificationType,
     day: date,
+    *,
+    day_bounds: Callable[[date], tuple[datetime, datetime]] | None = None,
 ) -> bool:
-    day_start, day_end = utc_day_bounds(day)
+    day_start, day_end = (day_bounds or utc_day_bounds)(day)
     result = await session.execute(
         select(Notification.id).where(
             Notification.user_id == user_id,
@@ -139,13 +177,16 @@ async def _send_daily_card_push():
     from app.core.config import settings
 
     now = datetime.now(timezone.utc)
-    today = now.date()
+    today = msk_today()
     webapp = settings.telegram_webapp_url.rstrip("/")
     card_url = f"{webapp}/card-of-day"
+    compat_url = f"{webapp}/compatibility"
 
     sent_count = 0
     skipped = 0
     failed = 0
+
+    logger.info("Daily card push starting for MSK date=%s", today)
 
     async with async_session() as session:
         result = await session.execute(
@@ -160,47 +201,55 @@ async def _send_daily_card_push():
         logger.info("Daily card push: %s eligible users", len(users))
 
         for user in users:
-            if await _notification_already_sent(session, user.id, NotificationType.CARD_OF_DAY, today):
-                skipped += 1
-                continue
-
-            name = user.profile.name if user.profile and user.profile.name else (user.first_name or "друг")
-            zodiac = user.profile.zodiac_sign if user.profile else None
             try:
-                data = await get_card_of_day(session, user.id, name, zodiac, today)
-            except Exception:
-                logger.exception("Daily card generation failed for user_id=%s", user.id)
-                failed += 1
-                continue
+                if await _notification_already_sent(
+                    session,
+                    user.id,
+                    NotificationType.CARD_OF_DAY,
+                    today,
+                    day_bounds=msk_day_bounds,
+                ):
+                    skipped += 1
+                    continue
 
-            rev = " (перевёрнутая)" if data["card"]["is_reversed"] else ""
-            card_url = f"{webapp}/card-of-day"
-            compat_url = f"{webapp}/compatibility"
-            card_name = escape_telegram_html(data["card"]["name"])
-            meaning = escape_telegram_html(data["meaning"])
-            intro = (
-                "🃏 <b>Ваша карта дня готова</b>\n\n"
-                f"<b>{card_name}</b>{rev}\n{meaning}\n\n"
-                "Откройте приложение — послание дня + совет карт.\n"
-                "А если день про отношения — загляните в «Что между вами» 💕"
-            )
-            keyboard = web_app_keyboard(
-                web_app_button("🃏 Открыть карту", card_url),
-                web_app_button("💕 Что между вами", compat_url),
-            )
-            sent = await send_telegram_message(user.telegram_id, intro, reply_markup=keyboard)
-            session.add(
-                Notification(
-                    user_id=user.id,
-                    notification_type=NotificationType.CARD_OF_DAY,
-                    message=intro,
-                    is_sent=sent,
-                    sent_at=now if sent else None,
+                name = user.profile.name if user.profile and user.profile.name else (user.first_name or "друг")
+                zodiac = user.profile.zodiac_sign if user.profile else None
+                try:
+                    data = await get_card_of_day(session, user.id, name, zodiac, today)
+                except Exception:
+                    logger.exception("Daily card generation failed for user_id=%s", user.id)
+                    failed += 1
+                    continue
+
+                rev = " (перевёрнутая)" if data["card"]["is_reversed"] else ""
+                card_name = escape_telegram_html(data["card"]["name"])
+                meaning = escape_telegram_html(data["meaning"])
+                intro = (
+                    "🃏 <b>Ваша карта дня готова</b>\n\n"
+                    f"<b>{card_name}</b>{rev}\n{meaning}\n\n"
+                    "Откройте приложение — послание дня + совет карт.\n"
+                    "А если день про отношения — загляните в «Что между вами» 💕"
                 )
-            )
-            if sent:
-                sent_count += 1
-            else:
+                keyboard = web_app_keyboard(
+                    web_app_button("🃏 Открыть карту", card_url),
+                    web_app_button("💕 Что между вами", compat_url),
+                )
+                sent = await send_telegram_message(user.telegram_id, intro, reply_markup=keyboard)
+                session.add(
+                    Notification(
+                        user_id=user.id,
+                        notification_type=NotificationType.CARD_OF_DAY,
+                        message=intro,
+                        is_sent=sent,
+                        sent_at=now if sent else None,
+                    )
+                )
+                if sent:
+                    sent_count += 1
+                else:
+                    failed += 1
+            except Exception:
+                logger.exception("Daily card push failed for user_id=%s", user.id)
                 failed += 1
 
         await session.commit()

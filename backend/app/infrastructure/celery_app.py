@@ -29,6 +29,14 @@ celery_app.conf.update(
             "task": "app.infrastructure.tasks.send_daily_card_push",
             "schedule": crontab(hour=9, minute=0),
         },
+        "send-daily-card-push-catchup-1": {
+            "task": "app.infrastructure.tasks.send_daily_card_push",
+            "schedule": crontab(hour=9, minute=30),
+        },
+        "send-daily-card-push-catchup-2": {
+            "task": "app.infrastructure.tasks.send_daily_card_push",
+            "schedule": crontab(hour=10, minute=0),
+        },
         "send-weekly-referral-push": {
             "task": "app.infrastructure.tasks.send_weekly_referral_push",
             "schedule": crontab(hour=11, minute=0, day_of_week=0),
