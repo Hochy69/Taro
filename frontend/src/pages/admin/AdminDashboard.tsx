@@ -177,13 +177,13 @@ export default function AdminDashboard() {
 
   const metrics = data
     ? [
-        { label: 'Пользователей', value: formatNum(data.total_users) },
-        { label: 'DAU', value: formatNum(data.dau) },
-        { label: 'MAU', value: formatNum(data.mau) },
-        { label: 'Новых сегодня', value: formatNum(data.new_registrations_today) },
+        { label: 'Пользователей (без админов/тестов)', value: formatNum(data.total_users) },
+        { label: 'DAU (сегодня МСК)', value: formatNum(data.dau) },
+        { label: 'MAU (30 дней)', value: formatNum(data.mau) },
+        { label: 'Новых сегодня (МСК)', value: formatNum(data.new_registrations_today) },
         { label: 'Активный Premium', value: formatNum(data.active_subscriptions) },
-        { label: 'Платящих клиентов', value: formatNum(data.paying_users) },
-        { label: 'Доход (⭐)', value: formatNum(data.total_revenue_stars) },
+        { label: 'Платящих (реальные Stars)', value: formatNum(data.paying_users) },
+        { label: 'Доход (⭐, без promo/test)', value: formatNum(data.total_revenue_stars) },
         { label: 'ARPPU (⭐)', value: formatNum(data.arpu) },
         { label: 'Конверсия %', value: formatNum(data.conversion_percent) },
         { label: 'Раскладов', value: formatNum(data.total_spreads) },

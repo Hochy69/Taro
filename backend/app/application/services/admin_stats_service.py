@@ -1,6 +1,7 @@
 """Admin dashboard statistics — production metrics exclude QA and admin accounts."""
 
 from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,8 @@ from app.infrastructure.database.models import (
     User,
 )
 
+MSK = ZoneInfo("Europe/Moscow")
+
 # Internal / QA accounts that must not skew production metrics.
 TEST_TELEGRAM_IDS: frozenset[int] = frozenset({
     0,  # dev browser user
@@ -26,16 +29,14 @@ TEST_TELEGRAM_IDS: frozenset[int] = frozenset({
     555000111,  # manual admin API test
     555001,
     555002,
+    900000001,  # remote admin panel health-check grant
 })
 
 
-def _utc_day_bounds(day: datetime.date) -> tuple[datetime, datetime]:
-    start = datetime.combine(day, time.min, tzinfo=timezone.utc)
-    return start, start + timedelta(days=1)
-
-
-def _is_real_user():
-    return User.telegram_id.notin_(TEST_TELEGRAM_IDS)
+def _msk_day_bounds(day) -> tuple[datetime, datetime]:
+    start = datetime.combine(day, time.min, tzinfo=MSK)
+    end = start + timedelta(days=1)
+    return start.astimezone(timezone.utc), end.astimezone(timezone.utc)
 
 
 def _is_production_user():
@@ -61,21 +62,19 @@ class AdminStatsService:
 
     async def get_dashboard(self) -> dict:
         now = datetime.now(timezone.utc)
-        today = now.date()
-        day_start, day_end = _utc_day_bounds(today)
+        today_msk = datetime.now(MSK).date()
+        day_start, day_end = _msk_day_bounds(today_msk)
         month_ago = now - timedelta(days=30)
-
-        real = _is_real_user()
         prod = _is_production_user()
 
         total_users = (
-            await self.session.execute(select(func.count(User.id)).where(real))
+            await self.session.execute(select(func.count(User.id)).where(prod))
         ).scalar() or 0
 
         dau = (
             await self.session.execute(
                 select(func.count(User.id)).where(
-                    real,
+                    prod,
                     User.last_active_at.is_not(None),
                     User.last_active_at >= day_start,
                     User.last_active_at < day_end,
@@ -86,7 +85,7 @@ class AdminStatsService:
         mau = (
             await self.session.execute(
                 select(func.count(User.id)).where(
-                    real,
+                    prod,
                     User.last_active_at.is_not(None),
                     User.last_active_at >= month_ago,
                 )
@@ -96,14 +95,14 @@ class AdminStatsService:
         new_users = (
             await self.session.execute(
                 select(func.count(User.id)).where(
-                    real,
+                    prod,
                     User.created_at >= day_start,
                     User.created_at < day_end,
                 )
             )
         ).scalar() or 0
 
-        # Paid premium = valid subscription row (not stale is_premium flag / admin grant).
+        # Paid/promo premium = valid subscription row (not stale is_premium / admin grant).
         active_premium_users = (
             await self.session.execute(
                 select(func.count(func.distinct(Subscription.user_id)))
@@ -145,7 +144,7 @@ class AdminStatsService:
             await self.session.execute(
                 select(func.count(Spread.id))
                 .join(User, Spread.user_id == User.id)
-                .where(real)
+                .where(prod)
             )
         ).scalar() or 0
 
@@ -153,7 +152,7 @@ class AdminStatsService:
             await self.session.execute(
                 select(func.count(Spread.id))
                 .join(User, Spread.user_id == User.id)
-                .where(real, Spread.status == SpreadStatus.COMPLETED)
+                .where(prod, Spread.status == SpreadStatus.COMPLETED)
             )
         ).scalar() or 0
 
@@ -162,7 +161,7 @@ class AdminStatsService:
                 select(func.count(AIResult.id))
                 .join(Spread, AIResult.spread_id == Spread.id)
                 .join(User, Spread.user_id == User.id)
-                .where(real)
+                .where(prod)
             )
         ).scalar() or 0
 
@@ -171,7 +170,7 @@ class AdminStatsService:
                 select(func.avg(AIResult.generation_time_ms))
                 .join(Spread, AIResult.spread_id == Spread.id)
                 .join(User, Spread.user_id == User.id)
-                .where(real, AIResult.generation_time_ms > 0)
+                .where(prod, AIResult.generation_time_ms > 0)
             )
         ).scalar() or 0
 
