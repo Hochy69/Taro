@@ -95,6 +95,15 @@ export function haptic(type: 'light' | 'medium' | 'heavy' | 'success' | 'error' 
   }
 }
 
+export function openTelegramLink(url: string): void {
+  const tg = window.Telegram?.WebApp
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(url)
+    return
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 export function openInvoice(stars: number, title: string) {
   const tg = window.Telegram?.WebApp
   if (tg?.openInvoice) {

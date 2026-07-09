@@ -4,6 +4,7 @@ import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
+    CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     LabeledPrice,
@@ -17,6 +18,56 @@ from app.webapp_url import get_webapp_url
 
 bot = Bot(token=settings.telegram_bot_token)
 dp = Dispatcher()
+
+_SUBSCRIBED_STATUSES = frozenset({"creator", "administrator", "member", "restricted"})
+
+
+def _required_channel_username() -> str | None:
+    raw = (settings.telegram_required_channel or "").strip()
+    if not raw:
+        return None
+    if raw.startswith("https://t.me/"):
+        raw = raw.rsplit("/", 1)[-1]
+    return raw.lstrip("@")
+
+
+def _required_channel_url() -> str:
+    username = _required_channel_username()
+    return f"https://t.me/{username}" if username else "https://t.me/best1taro"
+
+
+async def _is_channel_member(user_id: int) -> bool:
+    username = _required_channel_username()
+    if not username:
+        return True
+    try:
+        member = await bot.get_chat_member(chat_id=f"@{username}", user_id=user_id)
+        return member.status in _SUBSCRIBED_STATUSES
+    except Exception as e:  # noqa: BLE001
+        logging.warning("Channel membership check failed user_id=%s: %s", user_id, e)
+        return False
+
+
+def channel_subscribe_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Подписаться на канал", url=_required_channel_url())],
+            [InlineKeyboardButton(text="✅ Я подписался", callback_data="check_channel_sub")],
+        ]
+    )
+
+
+async def _ask_channel_subscribe(message: Message) -> None:
+    name = message.from_user.first_name or "друг"
+    await message.answer(
+        f"👋 <b>{name}, добро пожаловать!</b>\n\n"
+        "Чтобы пользоваться ботом, подпишитесь на наш канал — там карта дня, "
+        "советы по отношениям и полезные расклады.\n\n"
+        "1. Нажмите «Подписаться на канал»\n"
+        "2. Вернитесь сюда и нажмите «Я подписался»",
+        reply_markup=channel_subscribe_keyboard(),
+        parse_mode="HTML",
+    )
 
 
 async def _webapp_is_reachable(url: str) -> bool:
@@ -86,35 +137,74 @@ def compatibility_keyboard() -> InlineKeyboardMarkup:
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject):
-    name = message.from_user.first_name or "друг"
-    webapp_url = get_webapp_url()
-
     if command.args and command.args.lower().startswith("ref_"):
         await _save_pending_referral(message.from_user.id, command.args)
 
-    await _schedule_start_reminder(message.from_user.id)
+    if not await _is_channel_member(message.from_user.id):
+        await _ask_channel_subscribe(message)
+        return
+
+    await _send_start_welcome(message, command)
+
+
+@dp.callback_query(F.data == "check_channel_sub")
+async def on_check_channel_sub(callback: CallbackQuery):
+    if not callback.from_user or not callback.message:
+        return
+
+    if not await _is_channel_member(callback.from_user.id):
+        await callback.answer(
+            "Подписка не найдена. Подпишитесь на канал и нажмите снова.",
+            show_alert=True,
+        )
+        return
+
+    await callback.answer("Спасибо! Добро пожаловать.")
+    await _send_start_welcome(
+        callback.message,
+        command=None,
+        edit=True,
+        first_name=callback.from_user.first_name,
+    )
+
+
+async def _send_start_welcome(
+    message: Message,
+    command: CommandObject | None,
+    *,
+    edit: bool = False,
+    first_name: str | None = None,
+):
+    name = first_name or (message.from_user.first_name if message.from_user else None) or "друг"
+    webapp_url = get_webapp_url()
+    telegram_id = message.chat.id
+
+    await _schedule_start_reminder(telegram_id)
 
     reachable = await _webapp_is_reachable(webapp_url)
     if not reachable:
         logging.warning("WebApp URL not reachable from bot, showing button anyway: %s", webapp_url)
 
     referral_note = ""
-    if command.args and command.args.lower().startswith("ref_"):
+    if command and command.args and command.args.lower().startswith("ref_"):
         referral_note = (
             "\n\n🎁 <b>Друг пригласил вас!</b> После регистрации вы оба получите "
             "бесплатный расклад в подарок."
         )
 
-    await message.answer(
+    text = (
         f"✨ <b>Добро пожаловать, {name}!</b>\n\n"
         "Я — ваш проводник в Мир Таро. Карты готовы раскрыть тайны "
         "любви, карьеры, финансов и предназначения."
         f"{referral_note}\n\n"
         "Нажмите кнопку ниже, чтобы начать расклад 👇"
-        f"{'' if reachable else _unreachable_note()}",
-        reply_markup=start_keyboard(),
-        parse_mode="HTML",
+        f"{'' if reachable else _unreachable_note()}"
     )
+
+    if edit:
+        await message.edit_text(text, reply_markup=start_keyboard(), parse_mode="HTML")
+    else:
+        await message.answer(text, reply_markup=start_keyboard(), parse_mode="HTML")
 
 
 @dp.message(Command("help"))

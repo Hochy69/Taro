@@ -360,3 +360,10 @@ class UserPreferencesUpdate(BaseModel):
 
 class UserPreferencesResponse(BaseModel):
     daily_card_push: bool
+
+
+class ChannelSubscriptionResponse(BaseModel):
+    required: bool
+    subscribed: bool
+    channel_url: str | None = None
+    channel_username: str | None = None

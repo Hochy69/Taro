@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     telegram_bot_username: str = "best1tarolog_bot"
     telegram_webapp_url: str = ""
     telegram_payment_provider_token: str = ""
+    telegram_required_channel: str = "best1taro"
 
     ai_provider: str = "openai"
     ai_model: str = "gpt-4o-mini"

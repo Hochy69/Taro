@@ -38,10 +38,15 @@ from app.application.dto.schemas import (
     TelegramAuthResponse,
     UserResponse,
     UserPreferencesResponse,
+    ChannelSubscriptionResponse,
     UserPreferencesUpdate,
     ZodiacPortraitResponse,
 )
-from app.application.services.card_of_day_service import get_card_of_day
+from app.application.services.channel_subscription_service import (
+    is_user_subscribed_to_required_channel,
+    required_channel_url,
+    required_channel_username,
+)
 from app.application.services.compatibility_service import build_compatibility
 from app.application.services.lunar_service import render_lunar_birth_text
 from app.application.services.natal_chart_service import build_natal_chart
@@ -291,6 +296,20 @@ async def astrology_compatibility(body: PartnerBirthData, user: RequireTermsUser
         body.birth_city,
     )
     return CompatibilityResponse(**data)
+
+
+@router.get("/me/channel-subscription", response_model=ChannelSubscriptionResponse)
+async def get_channel_subscription(user: CurrentUser):
+    username = required_channel_username()
+    if not username:
+        return ChannelSubscriptionResponse(required=False, subscribed=True)
+    subscribed = await is_user_subscribed_to_required_channel(user.telegram_id)
+    return ChannelSubscriptionResponse(
+        required=True,
+        subscribed=subscribed,
+        channel_url=required_channel_url(),
+        channel_username=username,
+    )
 
 
 @router.get("/me/preferences", response_model=UserPreferencesResponse)

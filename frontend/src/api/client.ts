@@ -396,6 +396,14 @@ export const api = {
 
   getPreferences: () => request<{ daily_card_push: boolean }>('/me/preferences'),
 
+  getChannelSubscription: () =>
+    request<{
+      required: boolean
+      subscribed: boolean
+      channel_url: string | null
+      channel_username: string | null
+    }>('/me/channel-subscription'),
+
   updatePreferences: (data: { daily_card_push?: boolean }) =>
     request<{ daily_card_push: boolean }>('/me/preferences', {
       method: 'PATCH',
