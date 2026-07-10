@@ -97,7 +97,7 @@ def start_keyboard(*, show_channel_invite: bool = False) -> InlineKeyboardMarkup
     ]
     if show_channel_invite:
         rows.append(
-            [InlineKeyboardButton(text="📢 Канал с картой дня", url=_required_channel_url())]
+            [InlineKeyboardButton(text="📢 Подписаться на канал", url=_required_channel_url())]
         )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
