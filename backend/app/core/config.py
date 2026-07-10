@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     telegram_webapp_url: str = ""
     telegram_payment_provider_token: str = ""
     telegram_required_channel: str = "best1taro"
+    telegram_channel_subscribe_required: bool = False
 
     ai_provider: str = "openai"
     ai_model: str = "gpt-4o-mini"

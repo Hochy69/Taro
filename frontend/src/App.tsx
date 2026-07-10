@@ -15,7 +15,6 @@ import { ROUTES } from '@/lib/routes'
 import { tryApplyPromoFromUrl } from '@/lib/applyPromoFromUrl'
 import { initTelegramWebApp, unlockPageScroll } from '@/lib/telegram'
 import { AppHeader } from '@/components/AppHeader'
-import { ChannelGate } from '@/components/ChannelGate'
 import { TermsGate } from '@/components/TermsGate'
 import AdminDashboard from '@/pages/admin/AdminDashboard'
 import { WelcomePage } from '@/pages/WelcomePage'
@@ -111,8 +110,6 @@ function SessionBootstrap() {
   const { goTo } = useAppNavigation()
   const [loading, setLoading] = useState(true)
   const [bootError, setBootError] = useState<string | null>(null)
-  const [channelSubscribed, setChannelSubscribed] = useState(true)
-  const [channelUrl, setChannelUrl] = useState('https://t.me/best1taro')
   const didRun = useRef(false)
 
   useEffect(() => {
@@ -137,15 +134,6 @@ function SessionBootstrap() {
     }
 
     const afterAuth = async (termsAccepted: boolean) => {
-      try {
-        const channel = await api.getChannelSubscription()
-        if (channel.channel_url) {
-          setChannelUrl(channel.channel_url)
-        }
-        setChannelSubscribed(!channel.required || channel.subscribed)
-      } catch {
-        setChannelSubscribed(true)
-      }
       if (termsAccepted) {
         await tryApplyPromoFromUrl()
       }
@@ -257,16 +245,6 @@ function SessionBootstrap() {
           </button>
         </div>
       </div>
-    )
-  }
-
-  // Channel subscription first, then one-time terms acceptance.
-  if (isAuthenticated && !channelSubscribed) {
-    return (
-      <ChannelGate
-        channelUrl={channelUrl}
-        onVerified={() => setChannelSubscribed(true)}
-      />
     )
   }
 

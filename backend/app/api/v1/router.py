@@ -304,8 +304,9 @@ async def get_channel_subscription(user: CurrentUser):
     if not username:
         return ChannelSubscriptionResponse(required=False, subscribed=True)
     subscribed = await is_user_subscribed_to_required_channel(user.telegram_id)
+    required = settings.telegram_channel_subscribe_required
     return ChannelSubscriptionResponse(
-        required=True,
+        required=required,
         subscribed=subscribed,
         channel_url=required_channel_url(),
         channel_username=username,

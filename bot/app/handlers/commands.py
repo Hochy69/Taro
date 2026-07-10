@@ -48,28 +48,6 @@ async def _is_channel_member(user_id: int) -> bool:
         return False
 
 
-def channel_subscribe_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="📢 Подписаться на канал", url=_required_channel_url())],
-            [InlineKeyboardButton(text="✅ Я подписался", callback_data="check_channel_sub")],
-        ]
-    )
-
-
-async def _ask_channel_subscribe(message: Message) -> None:
-    name = message.from_user.first_name or "друг"
-    await message.answer(
-        f"👋 <b>{name}, добро пожаловать!</b>\n\n"
-        "Чтобы пользоваться ботом, подпишитесь на наш канал — там карта дня, "
-        "советы по отношениям и полезные расклады.\n\n"
-        "1. Нажмите «Подписаться на канал»\n"
-        "2. Вернитесь сюда и нажмите «Я подписался»",
-        reply_markup=channel_subscribe_keyboard(),
-        parse_mode="HTML",
-    )
-
-
 async def _webapp_is_reachable(url: str) -> bool:
     try:
         async with httpx.AsyncClient() as client:
@@ -101,24 +79,27 @@ def webapp_keyboard(url: str | None = None) -> InlineKeyboardMarkup:
     )
 
 
-def start_keyboard() -> InlineKeyboardMarkup:
+def start_keyboard(*, show_channel_invite: bool = False) -> InlineKeyboardMarkup:
     base = get_webapp_url().rstrip("/")
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🔮 Открыть расклад",
-                    web_app=WebAppInfo(url=base),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="💕 Что между вами",
-                    web_app=WebAppInfo(url=f"{base}/compatibility"),
-                )
-            ],
-        ]
-    )
+    rows = [
+        [
+            InlineKeyboardButton(
+                text="🔮 Открыть расклад",
+                web_app=WebAppInfo(url=base),
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="💕 Что между вами",
+                web_app=WebAppInfo(url=f"{base}/compatibility"),
+            )
+        ],
+    ]
+    if show_channel_invite:
+        rows.append(
+            [InlineKeyboardButton(text="📢 Канал с картой дня", url=_required_channel_url())]
+        )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def compatibility_keyboard() -> InlineKeyboardMarkup:
@@ -140,10 +121,6 @@ async def cmd_start(message: Message, command: CommandObject):
     if command.args and command.args.lower().startswith("ref_"):
         await _save_pending_referral(message.from_user.id, command.args)
 
-    if not await _is_channel_member(message.from_user.id):
-        await _ask_channel_subscribe(message)
-        return
-
     await _send_start_welcome(message, command)
 
 
@@ -152,20 +129,13 @@ async def on_check_channel_sub(callback: CallbackQuery):
     if not callback.from_user or not callback.message:
         return
 
-    if not await _is_channel_member(callback.from_user.id):
+    if await _is_channel_member(callback.from_user.id):
+        await callback.answer("Вы уже подписаны на канал. Спасибо!")
+    else:
         await callback.answer(
-            "Подписка не найдена. Подпишитесь на канал и нажмите снова.",
+            "Подписка пока не найдена. Это необязательно — можете пользоваться ботом.",
             show_alert=True,
         )
-        return
-
-    await callback.answer("Спасибо! Добро пожаловать.")
-    await _send_start_welcome(
-        callback.message,
-        command=None,
-        edit=True,
-        first_name=callback.from_user.first_name,
-    )
 
 
 async def _send_start_welcome(
@@ -178,6 +148,7 @@ async def _send_start_welcome(
     name = first_name or (message.from_user.first_name if message.from_user else None) or "друг"
     webapp_url = get_webapp_url()
     telegram_id = message.chat.id
+    user_id = message.from_user.id if message.from_user else telegram_id
 
     await _schedule_start_reminder(telegram_id)
 
@@ -192,19 +163,30 @@ async def _send_start_welcome(
             "бесплатный расклад в подарок."
         )
 
+    channel_note = ""
+    show_channel_invite = False
+    if settings.telegram_required_channel and not settings.telegram_channel_subscribe_required:
+        subscribed = await _is_channel_member(user_id)
+        show_channel_invite = not subscribed
+        if show_channel_invite:
+            channel_note = (
+                "\n\n📢 <i>По желанию:</i> подпишитесь на канал — там карта дня и советы по отношениям."
+            )
+
     text = (
         f"✨ <b>Добро пожаловать, {name}!</b>\n\n"
         "Я — ваш проводник в Мир Таро. Карты готовы раскрыть тайны "
         "любви, карьеры, финансов и предназначения."
-        f"{referral_note}\n\n"
+        f"{referral_note}{channel_note}\n\n"
         "Нажмите кнопку ниже, чтобы начать расклад 👇"
         f"{'' if reachable else _unreachable_note()}"
     )
+    keyboard = start_keyboard(show_channel_invite=show_channel_invite)
 
     if edit:
-        await message.edit_text(text, reply_markup=start_keyboard(), parse_mode="HTML")
+        await message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
     else:
-        await message.answer(text, reply_markup=start_keyboard(), parse_mode="HTML")
+        await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
 
 @dp.message(Command("help"))

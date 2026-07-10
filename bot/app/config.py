@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str
     telegram_webapp_url: str = "http://localhost:5173"
     telegram_required_channel: str = "best1taro"
+    telegram_channel_subscribe_required: bool = False
     api_url: str = "http://localhost:8000"
     internal_api_secret: str = "change-me-internal-secret"
     price_single_spread: int = 59
