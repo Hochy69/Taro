@@ -26,6 +26,7 @@ interface AdminUser {
   is_premium: boolean
   is_admin: boolean
   is_blocked: boolean
+  acquisition_source?: string | null
   created_at: string
 }
 
@@ -36,7 +37,17 @@ interface FinanceData {
   currency: string
 }
 
-type Tab = 'overview' | 'users' | 'finance'
+interface PartnerStat {
+  source: string
+  link: string
+  users_count: number
+  pending_starts: number
+  paying_users: number
+  revenue_stars: number
+  partner_share_35pct: number
+}
+
+type Tab = 'overview' | 'users' | 'finance' | 'partners'
 
 const API = import.meta.env.VITE_API_URL || '/api/v1'
 const TOKEN_KEY = 'tarot_admin_token'
@@ -98,6 +109,7 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [finance, setFinance] = useState<FinanceData | null>(null)
+  const [partners, setPartners] = useState<PartnerStat[]>([])
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -123,6 +135,11 @@ export default function AdminDashboard() {
     setFinance(await adminFetch<FinanceData>('/finance', token))
   }, [token])
 
+  const loadPartners = useCallback(async () => {
+    if (!token) return
+    setPartners(await adminFetch<PartnerStat[]>('/partners', token))
+  }, [token])
+
   const refresh = useCallback(async () => {
     if (!token) {
       setError('Нет токена. Отправьте боту: /admin TaroVlad')
@@ -137,13 +154,14 @@ export default function AdminDashboard() {
       if (tab === 'overview') await loadOverview()
       if (tab === 'users') await loadUsers()
       if (tab === 'finance') await loadFinance()
+      if (tab === 'partners') await loadPartners()
     } catch (e) {
       setAuthOk(false)
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
-  }, [token, tab, loadOverview, loadUsers, loadFinance])
+  }, [token, tab, loadOverview, loadUsers, loadFinance, loadPartners])
 
   useEffect(() => {
     refresh()
@@ -165,6 +183,7 @@ export default function AdminDashboard() {
     setData(null)
     setUsers([])
     setFinance(null)
+    setPartners([])
     setError('Вы вышли. Отправьте боту /admin TaroVlad для нового входа.')
   }
 
@@ -255,7 +274,7 @@ export default function AdminDashboard() {
         )}
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-          {(['overview', 'users', 'finance'] as Tab[]).map((t) => (
+          {(['overview', 'users', 'finance', 'partners'] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -266,7 +285,13 @@ export default function AdminDashboard() {
                   : 'bg-white/10 text-white/70 hover:bg-white/15'
               }`}
             >
-              {t === 'overview' ? 'Обзор' : t === 'users' ? 'Пользователи' : 'Финансы'}
+              {t === 'overview'
+                ? 'Обзор'
+                : t === 'users'
+                  ? 'Пользователи'
+                  : t === 'finance'
+                    ? 'Финансы'
+                    : 'Партнёры'}
             </button>
           ))}
         </div>
@@ -320,6 +345,7 @@ export default function AdminDashboard() {
                     <th className="text-left p-3">Имя</th>
                     <th className="text-left p-3">Telegram</th>
                     <th className="text-left p-3">Роль</th>
+                    <th className="text-left p-3">Источник</th>
                     <th className="text-left p-3">Статус</th>
                     <th className="text-right p-3">Действие</th>
                   </tr>
@@ -340,6 +366,9 @@ export default function AdminDashboard() {
                         ) : (
                           <span className="text-white/40">free</span>
                         )}
+                      </td>
+                      <td className="p-3 text-xs text-white/50">
+                        {u.acquisition_source || '—'}
                       </td>
                       <td className="p-3">
                         {u.is_blocked ? (
@@ -404,6 +433,60 @@ export default function AdminDashboard() {
                 <p className="text-white/40 text-sm">Нет данных. Нажмите «Обновить».</p>
               )
             )}
+          </div>
+        )}
+
+        {tab === 'partners' && (
+          <div>
+            <p className="text-white/50 text-sm mb-4">
+              Метки из ссылок вида{' '}
+              <code className="bg-black/30 px-1 rounded">?start=p_канал</code> или{' '}
+              <code className="bg-black/30 px-1 rounded">?start=ads_love</code>. Доля 35% —
+              ориентир для выплат партнёрам.
+            </p>
+            {loading && partners.length === 0 && (
+              <p className="text-white/40 text-sm mb-4">Загружаем партнёров…</p>
+            )}
+            <div className="rounded-2xl border border-white/10 overflow-x-auto">
+              <table className="w-full text-sm min-w-[720px]">
+                <thead className="bg-white/5 text-white/50">
+                  <tr>
+                    <th className="text-left p-3">Метка</th>
+                    <th className="text-right p-3">Пользователи</th>
+                    <th className="text-right p-3">Ожидают WebApp</th>
+                    <th className="text-right p-3">Платящие</th>
+                    <th className="text-right p-3">Доход ⭐</th>
+                    <th className="text-right p-3">35%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partners.map((p) => (
+                    <tr key={p.source} className="border-t border-white/5">
+                      <td className="p-3">
+                        <div className="font-medium">{p.source}</div>
+                        <div className="text-white/40 text-xs break-all">{p.link}</div>
+                      </td>
+                      <td className="p-3 text-right">{formatNum(p.users_count)}</td>
+                      <td className="p-3 text-right text-white/60">
+                        {formatNum(p.pending_starts)}
+                      </td>
+                      <td className="p-3 text-right">{formatNum(p.paying_users)}</td>
+                      <td className="p-3 text-right text-[#D4AF37]">
+                        {formatNum(p.revenue_stars)}
+                      </td>
+                      <td className="p-3 text-right text-emerald-300">
+                        {formatNum(p.partner_share_35pct)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!loading && partners.length === 0 && (
+                <p className="p-6 text-center text-white/40 text-sm">
+                  Пока нет переходов по партнёрским ссылкам
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

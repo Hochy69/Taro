@@ -125,6 +125,7 @@ async def list_users(
             "is_premium": u.is_premium,
             "is_admin": u.is_admin,
             "is_blocked": u.is_blocked,
+            "acquisition_source": u.acquisition_source,
             "created_at": u.created_at.isoformat(),
         }
         for u in users
@@ -188,3 +189,10 @@ async def finance_stats(admin=Depends(get_admin), db: AsyncSession = Depends(get
         "revenue_month": await revenue_since(month_ago),
         "currency": "Telegram Stars",
     }
+
+
+@router.get("/partners")
+async def partners_stats(admin=Depends(get_admin), db: AsyncSession = Depends(get_db)):
+    from app.application.services.attribution_service import AttributionService
+
+    return await AttributionService(db).partner_stats()

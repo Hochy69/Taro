@@ -71,6 +71,7 @@ async def _load_user_by_telegram_id(db: AsyncSession, telegram_id: int) -> User 
 async def authenticate_telegram_user(db: AsyncSession, init_data: str) -> tuple[User, str]:
     from sqlalchemy.exc import IntegrityError
 
+    from app.application.services.attribution_service import AttributionService
     from app.application.services.referral_service import ReferralService
 
     parsed = verify_telegram_webapp_data(init_data, settings.telegram_bot_token)
@@ -79,6 +80,7 @@ async def authenticate_telegram_user(db: AsyncSession, init_data: str) -> tuple[
 
     tg_user = parsed["user"]
     telegram_id = tg_user["id"]
+    start_param = parsed.get("start_param")
 
     user = await _load_user_by_telegram_id(db, telegram_id)
     is_new = False
@@ -109,7 +111,8 @@ async def authenticate_telegram_user(db: AsyncSession, init_data: str) -> tuple[
         if is_new:
             referral_service = ReferralService(db)
             await referral_service.ensure_referral_code(user)
-            await referral_service.process_signup(user, parsed.get("start_param"))
+            await referral_service.process_signup(user, start_param)
+            await AttributionService(db).apply_to_user(user, start_param)
         else:
             from datetime import datetime, timezone
 
@@ -117,7 +120,8 @@ async def authenticate_telegram_user(db: AsyncSession, init_data: str) -> tuple[
             if user.referred_by_id is None:
                 referral_service = ReferralService(db)
                 await referral_service.ensure_referral_code(user)
-                await referral_service.process_signup(user, parsed.get("start_param"))
+                await referral_service.process_signup(user, start_param)
+            await AttributionService(db).apply_to_user(user, start_param)
     else:
         from datetime import datetime, timezone
 
@@ -125,7 +129,8 @@ async def authenticate_telegram_user(db: AsyncSession, init_data: str) -> tuple[
         if user.referred_by_id is None:
             referral_service = ReferralService(db)
             await referral_service.ensure_referral_code(user)
-            await referral_service.process_signup(user, parsed.get("start_param"))
+            await referral_service.process_signup(user, start_param)
+        await AttributionService(db).apply_to_user(user, start_param)
 
     token = create_access_token({"sub": str(user.id)})
     return user, token

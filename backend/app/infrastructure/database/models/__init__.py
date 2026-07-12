@@ -97,6 +97,7 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     referral_code: Mapped[str | None] = mapped_column(String(16), unique=True, index=True)
     referred_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    acquisition_source: Mapped[str | None] = mapped_column(String(64), index=True)
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     daily_card_push: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -133,6 +134,16 @@ class ReferralPending(Base):
 
     telegram_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     referral_code: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AcquisitionPending(Base):
+    """Stores partner/ad start payload before the user opens the WebApp."""
+
+    __tablename__ = "acquisition_pending"
+
+    telegram_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    source: Mapped[str] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

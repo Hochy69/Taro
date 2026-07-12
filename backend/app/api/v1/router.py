@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import CurrentUser, DbSession, RequireTermsUser, authenticate_telegram_user
 from app.application.dto.schemas import (
     AcceptTermsResponse,
+    AttributionPendingRequest,
     BotStartNotifyRequest,
     AIResultResponse,
     CardResponse,
@@ -42,6 +43,7 @@ from app.application.dto.schemas import (
     UserPreferencesUpdate,
     ZodiacPortraitResponse,
 )
+from app.application.services.attribution_service import AttributionService
 from app.application.services.card_of_day_service import get_card_of_day
 from app.application.services.channel_subscription_service import (
     is_user_subscribed_to_required_channel,
@@ -354,6 +356,15 @@ async def save_referral_pending(body: ReferralPendingRequest, db: DbSession):
         raise HTTPException(status_code=403, detail="Forbidden")
     await ReferralService(db).save_pending(body.telegram_id, body.referral_code)
     return {"ok": True}
+
+
+@router.post("/attribution/pending")
+async def save_attribution_pending(body: AttributionPendingRequest, db: DbSession):
+    """Store partner/ad start payload from bot /start (internal)."""
+    if body.secret != settings.internal_api_secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    source = await AttributionService(db).save_pending(body.telegram_id, body.source)
+    return {"ok": True, "source": source}
 
 
 @router.post("/notifications/bot-start")

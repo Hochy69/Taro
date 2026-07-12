@@ -118,8 +118,12 @@ def compatibility_keyboard() -> InlineKeyboardMarkup:
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject):
-    if command.args and command.args.lower().startswith("ref_"):
-        await _save_pending_referral(message.from_user.id, command.args)
+    if command.args:
+        args = command.args.strip()
+        if args.lower().startswith("ref_"):
+            await _save_pending_referral(message.from_user.id, args)
+        else:
+            await _save_pending_attribution(message.from_user.id, args)
 
     await _send_start_welcome(message, command)
 
@@ -394,6 +398,31 @@ async def _save_pending_referral(telegram_id: int, referral_payload: str) -> Non
                 )
     except Exception as e:  # noqa: BLE001
         logging.warning("Failed to save pending referral: %s", e)
+
+
+async def _save_pending_attribution(telegram_id: int, source: str) -> None:
+    import httpx
+
+    url = f"{settings.api_url.rstrip('/')}/api/v1/attribution/pending"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                json={
+                    "telegram_id": telegram_id,
+                    "source": source,
+                    "secret": settings.internal_api_secret,
+                },
+                timeout=15.0,
+            )
+            if resp.status_code != 200:
+                logging.warning(
+                    "Failed to save pending attribution: HTTP %s %s",
+                    resp.status_code,
+                    resp.text[:200],
+                )
+    except Exception as e:  # noqa: BLE001
+        logging.warning("Failed to save pending attribution: %s", e)
 
 
 @dp.message(F.successful_payment)
