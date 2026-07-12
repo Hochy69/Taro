@@ -5,24 +5,24 @@ git fetch origin main
 git reset --hard origin/main
 
 docker compose restart backend bot frontend
-sleep 30
+sleep 35
 
-echo "=== schema via init (create_all + patches on restart) ==="
-# backend entrypoint runs init_db on start; also force once for safety
-docker compose exec -T backend python scripts/init_db.py
+echo "=== schema via init ==="
+docker compose exec -T -e PYTHONPATH=/app backend python scripts/init_db.py
 
 echo "=== tests ==="
-docker compose exec -T backend python -m pytest tests/test_attribution.py -q
+docker compose exec -T -e PYTHONPATH=/app backend python -m pytest tests/test_attribution.py -q
 
 echo "=== attribution flow ==="
-docker compose exec -T backend python - <<'PY'
+docker compose exec -T -e PYTHONPATH=/app backend python - <<'PY'
 import asyncio
 import httpx
 from sqlalchemy import select
 from app.core.config import settings
 from app.core.security import create_admin_token
-from app.infrastructure.database.models import User
+from app.infrastructure.database.models import Profile, User, UserLimit
 from app.infrastructure.database.session import async_session
+from app.application.services.attribution_service import AttributionService
 
 async def main():
     secret = settings.internal_api_secret
@@ -34,10 +34,7 @@ async def main():
         print("pending", r.status_code, r.json())
         assert r.status_code == 200 and r.json().get("source") == "p_testchannel"
 
-        # Create or update user with source via pending apply path
         async with async_session() as db:
-            from app.application.services.attribution_service import AttributionService
-            from app.infrastructure.database.models import Profile, UserLimit
             result = await db.execute(select(User).where(User.telegram_id == 900000777))
             user = result.scalar_one_or_none()
             if not user:
