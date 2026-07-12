@@ -5,10 +5,11 @@ git fetch origin main
 git reset --hard origin/main
 
 docker compose restart backend bot frontend
-sleep 25
+sleep 30
 
-echo "=== migrate ==="
-docker compose exec -T backend alembic upgrade head
+echo "=== schema via init (create_all + patches on restart) ==="
+# backend entrypoint runs init_db on start; also force once for safety
+docker compose exec -T backend python scripts/init_db.py
 
 echo "=== tests ==="
 docker compose exec -T backend python -m pytest tests/test_attribution.py -q

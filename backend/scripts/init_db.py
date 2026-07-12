@@ -16,10 +16,20 @@ _SCHEMA_PATCHES = [
     "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS birth_lon DOUBLE PRECISION",
     "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS birth_timezone INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_card_push BOOLEAN DEFAULT true",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS acquisition_source VARCHAR(64)",
+    "CREATE INDEX IF NOT EXISTS ix_users_acquisition_source ON users (acquisition_source)",
     "ALTER TABLE limits ADD COLUMN IF NOT EXISTS compatibility_credits INTEGER DEFAULT 0",
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS original_stars_amount INTEGER",
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS promo_code_id INTEGER",
     "ALTER TABLE spreads ADD COLUMN IF NOT EXISTS quota_from_bonus BOOLEAN",
+    """
+    CREATE TABLE IF NOT EXISTS acquisition_pending (
+        telegram_id BIGINT PRIMARY KEY,
+        source VARCHAR(64) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS ix_acquisition_pending_source ON acquisition_pending (source)",
 ]
 
 _ENUM_PATCHES = [
