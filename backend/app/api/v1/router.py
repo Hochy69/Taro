@@ -42,6 +42,7 @@ from app.application.dto.schemas import (
     UserPreferencesUpdate,
     ZodiacPortraitResponse,
 )
+from app.application.services.card_of_day_service import get_card_of_day
 from app.application.services.channel_subscription_service import (
     is_user_subscribed_to_required_channel,
     required_channel_url,
